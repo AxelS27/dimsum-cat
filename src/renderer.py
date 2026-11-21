@@ -11,6 +11,8 @@ from src.models import (
     WATERMARK_PNG,
     TEXT_SIZES,
     SPRITE_UPSCALE,
+    POSITIONS,
+    ROOT,
 )
 from src.utils import (
     resolve_pos,
@@ -53,6 +55,10 @@ def make_background(
             _BG_IMAGE_CACHE[cache_key] = img
         return _BG_IMAGE_CACHE[cache_key].copy()
 
+    cache_key = f"solid:{size[0]}x{size[1]}:{bg_hex}"
+    if cache_key in _BG_IMAGE_CACHE:
+        return _BG_IMAGE_CACHE[cache_key].copy()
+
     hex_str = bg_hex.strip().lstrip("#")
     base = tuple(int(hex_str[i:i+2], 16) for i in (0, 2, 4))
     canvas = Image.new("RGBA", size, (*base, 255))
@@ -63,7 +69,8 @@ def make_background(
         fill=(*lighter, 55),
     )
     canvas.alpha_composite(glow.filter(ImageFilter.GaussianBlur(90)))
-    return canvas
+    _BG_IMAGE_CACHE[cache_key] = canvas
+    return canvas.copy()
 
 
 def _parse_hex_color(value: str, fallback: tuple[int, int, int]) -> tuple[int, int, int]:
@@ -131,11 +138,16 @@ def _draw_rich_line(
     alpha: int,
 ) -> None:
     cursor = x
-    shadow_a = int(70 * alpha / 255)
+    shadow_a = int(80 * alpha / 255)
+    # First pass: drop shadow with matching stroke
+    for span in spans:
+        draw.text((cursor + 4, y + 4), span.text, font=font, fill=(0, 0, 0, shadow_a), stroke_width=7, stroke_fill=(0, 0, 0, shadow_a))
+        cursor += measure(draw, span.text, font)[0]
+    # Second pass: main text with crisp white outline
+    cursor = x
     for span in spans:
         color = _parse_hex_color(span.color, (42, 42, 42))
-        draw.text((cursor + 3, y + 3), span.text, font=font, fill=(0, 0, 0, shadow_a))
-        draw.text((cursor, y), span.text, font=font, fill=(*color, alpha))
+        draw.text((cursor, y), span.text, font=font, fill=(*color, alpha), stroke_width=7, stroke_fill=(255, 255, 255, alpha))
         cursor += measure(draw, span.text, font)[0]
 
 
@@ -148,6 +160,7 @@ def draw_text_overlay(
     w_scale: float,
     rich_text: list[RichTextSpan] | None = None,
     rich_text_sub: list[RichTextSpan] | None = None,
+    y_offset: int = 0,
 ) -> None:
     """Render text directly on canvas — no card/box, drop shadow only."""
     rich_text     = rich_text     or []
@@ -192,34 +205,10 @@ def draw_text_overlay(
     # Text zone: top 27% of canvas — character lives below this
     zone_top = int(canvas.height * 0.06)
     zone_h   = int(canvas.height * 0.27)
-    y = zone_top + max(0, (zone_h - total_h) // 2)
+    y = zone_top + max(0, (zone_h - total_h) // 2) + y_offset
 
     layer = Image.new("RGBA", canvas.size, (0, 0, 0, 0))
-
-    # Semi-transparent dark band behind text for readability on busy backgrounds
-    band_pad = int(18 * w_scale)
-    band_y0  = max(0, y - band_pad)
-    band_y1  = min(canvas.height, y + total_h + band_pad)
-    band_alpha = int(120 * alpha / 255)
-    ImageDraw.Draw(layer).rounded_rectangle(
-        [int(canvas.width * 0.04), band_y0, int(canvas.width * 0.96), band_y1],
-        radius=int(16 * w_scale),
-        fill=(0, 0, 0, band_alpha),
-    )
     draw  = ImageDraw.Draw(layer)
-
-    def render_line(line: str, font: ImageFont.ImageFont, color: tuple[int, int, int]) -> int:
-        w, h = measure(draw, line, font)
-        x = (canvas.width - w) // 2
-        shadow_a = int(55 * alpha / 255)
-        draw.text((x + 2, y + 2), line, font=font, fill=(0, 0, 0, shadow_a))
-        draw.text((x, y), line, font=font, fill=(*color, alpha))
-        return h + gap_ln
-
-    nonlocal_y = [y]
-
-    def next_line(line: str, font: ImageFont.ImageFont, color: tuple[int, int, int]) -> None:
-        nonlocal_y[0] += render_line_at(draw, line, font, color, nonlocal_y[0], canvas.width, gap_ln, alpha)
 
     # Instead of the closure trick, just draw inline:
     if rich_rows:
@@ -232,8 +221,9 @@ def draw_text_overlay(
         for line in main_lines:
             w, h = measure(draw, line, main_font)
             x = (canvas.width - w) // 2
-            draw.text((x, y), line, font=main_font, fill=(255, 255, 255, alpha),
-                      stroke_width=4, stroke_fill=(20, 20, 20, alpha))
+            shadow_a = int(80 * alpha / 255)
+            draw.text((x + 4, y + 4), line, font=main_font, fill=(0, 0, 0, shadow_a), stroke_width=7, stroke_fill=(0, 0, 0, shadow_a))
+            draw.text((x, y), line, font=main_font, fill=(42, 42, 42, alpha), stroke_width=7, stroke_fill=(255, 255, 255, alpha))
             y += h + gap_ln
 
     if rich_sub_rows:
@@ -248,15 +238,21 @@ def draw_text_overlay(
         for line in sub_lines:
             w, h = measure(draw, line, sub_font)
             x = (canvas.width - w) // 2
-            draw.text((x, y), line, font=sub_font, fill=(255, 255, 230, alpha),
-                      stroke_width=2, stroke_fill=(20, 20, 20, alpha))
+            shadow_a = int(70 * alpha / 255)
+            draw.text((x + 3, y + 3), line, font=sub_font, fill=(0, 0, 0, shadow_a), stroke_width=5, stroke_fill=(0, 0, 0, shadow_a))
+            draw.text((x, y), line, font=sub_font, fill=(30, 30, 30, alpha), stroke_width=5, stroke_fill=(255, 255, 255, alpha))
             y += h + gap_ln
 
     canvas.alpha_composite(layer)
 
 
-def render_video_frames(config: RenderConfig) -> list[Image.Image]:
+def render_video_frames(
+    config: RenderConfig,
+    frame_start: int = 0,
+    frame_end: int | None = None,
+) -> list[Image.Image]:
     total_frames = max(1, int(config.duration * config.fps))
+    frame_end = total_frames if frame_end is None else min(frame_end, total_frames)
     w_scale = config.width / 720
 
     # Pre-load all animations referenced in beats, keyed by (character, animation)
@@ -336,7 +332,7 @@ def render_video_frames(config: RenderConfig) -> list[Image.Image]:
 
     rendered: list[Image.Image] = []
 
-    for idx in range(total_frames):
+    for idx in range(frame_start, frame_end):
         t = idx / config.fps
         beat_idx, beat = beat_at(t)
         age = t - beat.time
@@ -348,48 +344,62 @@ def render_video_frames(config: RenderConfig) -> list[Image.Image]:
         sprite                   = sprite_frames[sprite_schedules[cache_key][idx]].copy()
         orig_w, orig_h           = orig_size
 
-        # --- Character position / scale with spring transition ---
+        # --- Character position / scale with bouncy entrance pop-in ---
         target_cx, target_cy = resolve_pos(beat.pos)
         target_scale = beat.scale
 
-        if beat_idx > 0 and age < TRANS:
-            prev   = beats[beat_idx - 1]
-            pcx, pcy = resolve_pos(prev.pos)
-            blend  = ease_out_cubic(age / TRANS)
-            spring = ease_out_back(age / TRANS)
-            char_cx    = lerp(pcx,        target_cx,    blend)
-            char_cy    = lerp(pcy,        target_cy,    blend)
-            char_scale = lerp(prev.scale, target_scale, spring)
+        ENTRANCE_DUR = 0.35
+        if age < ENTRANCE_DUR:
+            prog = age / ENTRANCE_DUR
+            spring = ease_out_back(prog)
+            char_scale = target_scale * (0.60 + 0.40 * spring)
+            rise = (1.0 - ease_out_cubic(prog)) * 0.07
+            char_cy = target_cy + rise
+            char_cx = target_cx
         else:
             char_cx, char_cy, char_scale = target_cx, target_cy, target_scale
 
-        # Scale punch on beat entry — brief +10% overshoot that settles
-        if age < 0.20:
-            char_scale *= 1.0 + 0.10 * math.sin(math.pi * age / 0.20)
-
         # ----------------------------------------------------------------
-        # Organic motion — each signal has its own frequency and phase so
-        # they never lock together and feel truly independent.
+        # Distinct Motion Per Character: custom bobbing, tilt & physics
         # ----------------------------------------------------------------
+        if anim_name == "alligator":
+            # Alligator: calm, buoyant swamp-water float with gentle side-to-side drift
+            bob_px = math.sin(age * 2.8) * 16.0 * w_scale
+            rot_deg = math.sin(age * 1.6) * 4.5
+            sq_amount = math.sin(age * 2.8) * 0.025
+            breath = organic(t, freq=0.30, phase=0.0) * 0.020
+        elif anim_name == "crocodile":
+            # Crocodile: heavy, energetic, chunky belly-laugh bounce!
+            laugh_hop = abs(math.sin(age * 5.2)) * -26.0 * w_scale
+            bob_px = laugh_hop + 10.0 * w_scale
+            rot_deg = math.sin(age * 3.6) * 8.5
+            sq_amount = math.sin(age * 5.2) * 0.060
+            breath = organic(t, freq=0.40, phase=1.0) * 0.020
+        elif anim_name == "ladybug":
+            # Ladybug: tiny, eager, rapid excited hops on the leaf with big head tilts
+            hop_cycle = math.sin(age * 6.5)
+            bob_px = (hop_cycle * 14.0 + (abs(hop_cycle) - 0.5) * -12.0) * w_scale
+            rot_deg = math.sin(age * 4.8) * 9.5
+            sq_amount = hop_cycle * 0.045
+            breath = organic(t, freq=0.50, phase=2.0) * 0.030
+        elif anim_name == "jellyfish":
+            # Jellyfish: fluid underwater swimming pulse thrusting up and drifting down
+            pulse = (math.sin(age * 2.0) ** 2) * 36.0 * w_scale
+            bob_px = -pulse + 14.0 * w_scale
+            rot_deg = math.sin(age * 1.3) * 6.0
+            sq_amount = -math.sin(age * 2.0) * 0.080
+            breath = organic(t, freq=0.25, phase=3.0) * 0.025
+        else:
+            # Fallback for standard characters
+            bounce_cycle = math.sin(t * math.pi * 3.8)
+            bob_px = (bounce_cycle * 14.0 + organic(t, freq=0.90, phase=0.00) * 8.0) * w_scale
+            rot_deg = math.sin(t * math.pi * 1.9 + 0.5) * 4.5 + organic(t, freq=0.55, phase=1.80) * 2.2
+            sq_amount = bounce_cycle * 0.040
+            breath = organic(t, freq=0.35, phase=3.77) * 0.022
 
-        # Bob: slow organic float, never a perfect sine cycle
-        bob_raw   = organic(t, freq=0.85, phase=0.00)
-        bob_px    = bob_raw * 6 * w_scale                  # ±6px
-
-        # Rotation: different freq so it drifts in/out of sync with bob
-        rot_raw   = organic(t, freq=0.52, phase=1.91)
-        rot_deg   = rot_raw * 4.0                          # ±4°
-
-        # Breathing: very slow subtle scale pulse
-        breath    = organic(t, freq=0.28, phase=3.77)
-        char_scale *= 1.0 + breath * 0.018                # ±1.8%
-
-        # Squash & stretch: tied to bob direction
-        # — going down (bob_px > 0): slightly wider + shorter
-        # — going up  (bob_px < 0): slightly narrower + taller
-        sq_amount = bob_raw * 0.035
-        sq_x = 1.0 + sq_amount                            # x widens when squashing
-        sq_y = 1.0 - sq_amount                            # y shortens when squashing
+        char_scale *= 1.0 + breath
+        sq_x = 1.0 + sq_amount
+        sq_y = 1.0 - sq_amount
 
         # ----------------------------------------------------------------
         # Compose frame
@@ -398,9 +408,67 @@ def render_video_frames(config: RenderConfig) -> list[Image.Image]:
         canvas = make_background((config.width, config.height), config.bg,
                                   bg_image=active_bg_image, story_dir=config.story_dir)
 
-        # Text — fades in on beat entry
-        text_alpha = min(255, int(255 * age / FADE_IN)) if age < FADE_IN else 255
-        draw_text_overlay(canvas, beat.text, beat.sub, beat.text_size, text_alpha, w_scale, beat.rich_text, beat.rich_text_sub)
+        # Text — bouncy pop-in spring entrance per beat
+        TEXT_ENTRANCE = 0.28
+        if age < TEXT_ENTRANCE:
+            prog = age / TEXT_ENTRANCE
+            spring = ease_out_back(prog)
+            text_y_offset = int((1.0 - spring) * -22.0 * w_scale)
+            text_alpha = min(255, int(255 * (prog ** 0.8))) if beat_idx > 0 else 255
+        else:
+            text_y_offset = 0
+            text_alpha = 255
+        draw_text_overlay(
+            canvas, beat.text, beat.sub, beat.text_size,
+            text_alpha, w_scale, beat.rich_text, beat.rich_text_sub,
+            y_offset=text_y_offset,
+        )
+
+        # Accessories — composited BEFORE character so cat is always front layer
+        from pathlib import Path as _APath
+        for acc in beat.accessories:
+            ap = _APath(acc.image)
+            if not ap.is_absolute():
+                candidate = config.story_dir / ap if config.story_dir else None
+                if candidate and candidate.exists():
+                    ap = candidate
+                else:
+                    ap = ROOT / ap
+            if not ap.exists():
+                continue
+            if ap.is_dir():
+                num_frames = sorted(ap.glob("frame_[0-9][0-9].png"))
+                if num_frames:
+                    acc_frames = [Image.open(p).convert("RGBA") for p in num_frames]
+                else:
+                    from src.models import FRAME_NAMES as _FN
+                    acc_frames = [Image.open(ap / f).convert("RGBA") for f in _FN if (ap / f).exists()]
+                if not acc_frames:
+                    continue
+                frame_i = idx // max(1, config.fps // 2) % len(acc_frames)
+                acc_img = acc_frames[frame_i]
+            else:
+                acc_img = Image.open(ap).convert("RGBA")
+            target_w = max(1, int(config.width * acc.scale))
+            ratio = target_w / acc_img.width
+            acc_img = acc_img.resize((target_w, max(1, int(acc_img.height * ratio))), Image.Resampling.LANCZOS)
+            if acc.flip_x:
+                acc_img = acc_img.transpose(Image.Transpose.FLIP_LEFT_RIGHT)
+            if abs(acc.rotate) > 0.3:
+                acc_img = acc_img.rotate(-acc.rotate, expand=True, resample=Image.Resampling.BICUBIC)
+            acc_pos = POSITIONS.get(acc.pos) if acc.pos in POSITIONS else None
+            if acc_pos is None:
+                try:
+                    parts = acc.pos.split(",")
+                    acc_pos = (float(parts[0]), float(parts[1]))
+                except Exception:
+                    acc_pos = (0.5, 0.5)
+            ax = int(config.width  * acc_pos[0] - acc_img.width  // 2)
+            ay = int(config.height * acc_pos[1] - acc_img.height // 2)
+            ax0 = max(0, -ax); ax1 = min(acc_img.width,  config.width  - ax)
+            ay0 = max(0, -ay); ay1 = min(acc_img.height, config.height - ay)
+            if ax1 > ax0 and ay1 > ay0:
+                canvas.alpha_composite(acc_img.crop((ax0, ay0, ax1, ay1)), (max(0, ax), max(0, ay)))
 
         # Resize so the cat *body* (excluding padding) renders at 62% of
         # canvas width × char_scale.  The pre-upscaled sprite is padded_size×4,
@@ -413,16 +481,21 @@ def render_video_frames(config: RenderConfig) -> list[Image.Image]:
         new_h = max(1, int(sprite.height * sf * sq_y))
         sprite = sprite.resize((new_w, new_h), Image.Resampling.LANCZOS)
 
-        # Rotate after resize (cheaper; BICUBIC best available for rotate)
-        if abs(rot_deg) > 0.3:
-            sprite = sprite.rotate(rot_deg, expand=True, resample=Image.Resampling.BICUBIC)
+        # Flip character horizontally if requested
+        if beat.flip_x:
+            sprite = sprite.transpose(Image.Transpose.FLIP_LEFT_RIGHT)
+
+        # Rotate after resize — organic + any per-beat offset
+        total_rot = rot_deg + beat.cat_rotate
+        if abs(total_rot) > 0.3:
+            sprite = sprite.rotate(total_rot, expand=True, resample=Image.Resampling.BICUBIC)
 
         # Position without clamping — let the padding absorb any edge effects.
         # Composite only the visible portion so we never shift the cat's anchor.
         sx = int(config.width  * char_cx - sprite.width  // 2)
         sy = int(config.height * char_cy - sprite.height // 2 + bob_px)
-        # Clamp so the sprite never overlaps the subtitle text zone (top ~38% of canvas)
-        sy = max(int(config.height * 0.38), sy)
+        # Clamp so the sprite never overlaps the subtitle text zone (top ~30% of canvas)
+        sy = max(int(config.height * 0.30), sy)
 
         src_x0 = max(0, -sx);  src_x1 = min(sprite.width,  config.width  - sx)
         src_y0 = max(0, -sy);  src_y1 = min(sprite.height, config.height - sy)
@@ -432,6 +505,7 @@ def render_video_frames(config: RenderConfig) -> list[Image.Image]:
                 sprite.crop((src_x0, src_y0, src_x1, src_y1)),
                 (max(0, sx), max(0, sy)),
             )
+
 
         # PNG watermark — centred near bottom
         if wm_img is not None:

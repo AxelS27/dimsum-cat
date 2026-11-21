@@ -2,7 +2,7 @@
   "title": "Story Title",
   "description": "Description Here",
 
-  "animation": "normal_talk",
+  "default_animation": "normal_talk",
   "character": "dimsum_cat",
   "bg": "#f5f0ec",
   "bg_image": "",
@@ -19,6 +19,9 @@
   "bg_music": "../../assets/music/love_maybe.mp3",
   "bg_music_start": "00:00",
   "bg_volume": 0.09,
+  "intro_gap": 0.8,
+  "between_gap": 0.65,
+  "silent_beat_dur": 1.5,
 
   "watermark": "",
   "pinned_comment": "",
@@ -36,6 +39,8 @@
       "bg_image": "",
       "tts_speed": null,
       "tts_temperature": null,
+      "tts_delay": 0.0,
+      "after_gap": null,
       "rich_text": [],
       "rich_text_sub": []
     }

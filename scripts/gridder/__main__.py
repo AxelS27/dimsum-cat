@@ -99,8 +99,10 @@ def detect_cols(arr: np.ndarray, cell_rows: list[tuple[int,int]]) -> list[tuple[
             if in_b and (x - start) >= 2: bands.append((start, x - 1))
             in_b = False
 
-    # Keep only narrow bands (true borders ≤16px; cat-body blobs are wider)
-    narrow = [(s, e) for s, e in bands if e - s + 1 <= 16]
+    # Keep only narrow bands (true borders ≤16px; cat-body blobs are wider).
+    # Also skip the outer image margin (bands starting at x=0) — those are
+    # white/light image borders, not grid cell separators.
+    narrow = [(s, e) for s, e in bands if e - s + 1 <= 16 and s > 5]
 
     # Position check: a true cell border is non-green at the very TOP of
     # EACH cell row (the border runs the full height across all rows).
@@ -119,7 +121,17 @@ def detect_cols(arr: np.ndarray, cell_rows: list[tuple[int,int]]) -> list[tuple[
                 rows_with_border += 1
         if rows_with_border >= len(cell_rows) * 0.5:   # border in ≥50% of rows = true sep
             result.append((s, e, cx))
-    return result
+
+    # Drop false-positive separators that create cells narrower than min_cell_w.
+    # These are usually cat-body outlines that happen to pass the row-top check.
+    # Two consecutive seps closer than 80px → the second one is a ghost; remove it.
+    min_cell_w = 80
+    filtered: list[tuple[int, int, int]] = []
+    for band in result:
+        if filtered and (band[2] - filtered[-1][2]) < min_cell_w:
+            continue
+        filtered.append(band)
+    return filtered
 
 
 def build_grid(arr: np.ndarray):
@@ -128,7 +140,7 @@ def build_grid(arr: np.ndarray):
     top_y, bot_y, mid_bands = detect_rows(arr)
 
     row_starts = [top_y]      + [e + 1 for s, e in mid_bands]
-    row_ends   = [e for s, e in mid_bands] + [bot_y]
+    row_ends   = [s - 1 for s, e in mid_bands] + [bot_y]
     cell_rows  = list(zip(row_starts, row_ends))
 
     col_bands = detect_cols(arr, cell_rows)
@@ -466,14 +478,29 @@ def preview_grid(design_path: Path) -> None:
     w    = img.width
 
     # Rows
+    # Cyan = outer content boundary (top/bottom of entire grid)
     draw.line([(0,top_y),(w,top_y)], fill=(0,220,255), width=4)
     draw.line([(0,bot_y),(w,bot_y)], fill=(0,220,255), width=4)
+    # Yellow = top edge of label bar, Orange = bottom edge of label bar
+    # Together they show the full extent of each row separator
     for s, e in mid_bands:
-        draw.line([(0,(s+e)//2),(w,(s+e)//2)], fill=(255,220,0), width=4)
+        draw.line([(0,s),(w,s)], fill=(255,220,0), width=3)   # top of label bar
+        draw.line([(0,e),(w,e)], fill=(255,140,0), width=3)   # bottom of label bar
 
-    # Cols
+    # Cols — internal separators
     for s, e, c in left_bands + right_bands:
         draw.line([(c,0),(c,img.height)], fill=(255,0,200), width=4)
+
+    # Outer vertical boundaries — detect from non-white/non-green content
+    arr_rgb = np.array(img)
+    r, g, b = arr_rgb[:,:,0], arr_rgb[:,:,1], arr_rgb[:,:,2]
+    is_margin = (r > 240) & (g > 240) & (b > 240)  # white outer margin
+    non_margin_cols = np.where(~is_margin.all(axis=0))[0]
+    if len(non_margin_cols):
+        left_x  = int(non_margin_cols[0])
+        right_x = int(non_margin_cols[-1])
+        draw.line([(left_x, 0), (left_x, img.height)],  fill=(0,220,255), width=3)
+        draw.line([(right_x, 0), (right_x, img.height)], fill=(0,220,255), width=3)
 
     # Save to design_dir/preview/
     preview_dir = design_path.parent / "preview"

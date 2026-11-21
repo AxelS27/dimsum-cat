@@ -1,0 +1,68 @@
+{
+  "title": "굿나잇",
+  "description": "굿나잇 하고 싶은데 30분째 고민 중 😔\n\n#delulu #delusional #crush #crushcrush #overthinking #relatable #girlmath #girlhood #lovestory #kdrama #kdramamoments #kawaii #animegirl #catgirl #dimsumcat #fyp #foryou #foryoupage #viral #trending #blowthisup #xyzbca #mood #sameee #feelings #anime #cute #korean #reels #storytime",
+  "animation": "normal_talk",
+  "character": "dimsum_cat",
+  "bg": "#eeeaf5",
+  "tts": true,
+  "gpt_sovits_ref": "../../../assets/audio_reference/dimsum_cat_korean.mp3",
+  "bg_music": "../../../assets/music/dream.mp3",
+  "beats": [
+    {
+      "time": 0.0,
+      "text": "굿나잇 하고 싶어.",
+      "sub": "I want to say goodnight.",
+      "animation": "holding_phone",
+      "pos": "center-low",
+      "scale": 1.0,
+      "text_size": "big"
+    },
+    {
+      "time": 0.0,
+      "text": "귀엽나?",
+      "sub": "Cute, right?",
+      "animation": "shy_blush",
+      "pos": "right-high",
+      "scale": 1.1,
+      "text_size": "big"
+    },
+    {
+      "time": 0.0,
+      "text": "아니면 오글거리나?",
+      "sub": "Or cringe?",
+      "animation": "confused_thinking",
+      "pos": "left",
+      "scale": 0.95,
+      "text_size": "big",
+      "tts_speed": 0.82,
+      "tts_temperature": 0.85
+    },
+    {
+      "time": 0.0,
+      "text": "아니면 너무 매달리는 것 같나?",
+      "sub": "Or needy?",
+      "animation": "embarrassed",
+      "pos": "right-low",
+      "scale": 0.85,
+      "text_size": "big"
+    },
+    {
+      "time": 0.0,
+      "text": "",
+      "sub": "",
+      "animation": "side_eye",
+      "pos": "center",
+      "scale": 1.15,
+      "text_size": "big"
+    },
+    {
+      "time": 0.0,
+      "text": "그냥 잘게.",
+      "sub": "I'll just sleep.",
+      "animation": "sleepy_yawn",
+      "pos": "center-low",
+      "scale": 1.0,
+      "text_size": "big"
+    }
+  ]
+}

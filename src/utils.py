@@ -163,13 +163,13 @@ def _audio_duration(ffmpeg: str, path: Path) -> float:
 def _recalculate_beat_times(
     beats: list[StoryBeat],
     clip_durations: dict[int, float],
-    intro_gap: float = 0.6,
-    between_gap: float = 0.45,
+    intro_gap: float = 0.8,
+    between_gap: float = 0.65,
     silent_beat_dur: float = 1.5,
 ) -> tuple[list[StoryBeat], float]:
     """Retime beats so each scene ends shortly after its speech finishes.
 
-    Beats with speech advance by (clip_duration + between_gap).
+    Beats with speech advance by (tts_delay + clip_duration + gap).
     Beats without speech (punctuation, silent) advance by silent_beat_dur.
     """
     import dataclasses
@@ -178,5 +178,7 @@ def _recalculate_beat_times(
     for i, beat in enumerate(beats):
         new_beats.append(dataclasses.replace(beat, time=t))
         dur = clip_durations.get(i, 0.0)
-        t += (dur + between_gap) if dur > 0 else silent_beat_dur
+        gap = beat.after_gap if beat.after_gap is not None else between_gap
+        delay = max(0.0, beat.tts_delay)
+        t += (delay + dur + gap) if dur > 0 else silent_beat_dur
     return new_beats, t + 1.8   # trailing buffer — enough for last clip to finish

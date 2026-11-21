@@ -36,7 +36,8 @@ def make_sprite_schedule(total_frames: int, fps: int, sprite_count: int) -> list
     Holds each sprite frame for a slightly irregular duration so the animation
     feels hand-timed rather than metronomic.
     """
-    base_hold = max(2, round(SPRITE_FRAME_MS / 1000 * fps))
+    frame_ms = 200 if sprite_count > 4 else SPRITE_FRAME_MS
+    base_hold = max(2, round(frame_ms / 1000 * fps))
     schedule: list[int] = []
     sprite_i = 0
     hold_count = 0
@@ -123,12 +124,17 @@ def load_frames(animation: str, character: str = "") -> tuple[list[Image.Image],
     if not anim_dir.exists():
         available = ", ".join(list_animations()) or "none"
         raise FileNotFoundError(f"Animation '{animation}' not found for character '{character or 'dimsum_cat'}'. Available: {available}")
+    num_frames = sorted(anim_dir.glob("frame_[0-9][0-9].png"))
     frames = []
-    for name in FRAME_NAMES:
-        p = anim_dir / name
-        if not p.exists():
-            raise FileNotFoundError(f"Missing: {p}")
-        frames.append(Image.open(p).convert("RGBA"))
+    if num_frames:
+        for p in num_frames:
+            frames.append(Image.open(p).convert("RGBA"))
+    else:
+        for name in FRAME_NAMES:
+            p = anim_dir / name
+            if not p.exists():
+                raise FileNotFoundError(f"Missing: {p}")
+            frames.append(Image.open(p).convert("RGBA"))
     sizes = {f.size for f in frames}
     if len(sizes) != 1:
         raise ValueError(f"'{animation}' frames have inconsistent sizes: {sorted(sizes)}")

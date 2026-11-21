@@ -1,0 +1,107 @@
+{
+  "title": "POV: Social Battery 0%",
+  "description": "피오브이: 기 빨려서 방전됐을 때... 🐱\n\n#dimsumcat #introvert #introvertproblems #socialbattery #relatable #fyp #foryou #viral #trending",
+  "pinned_comment": "다들 기 빨릴 때 어떻게 해요? 😭\n집으로 도망치기 vs 구석에 숨어있기?",
+
+  "animation": "sleepy_yawn",
+  "bg": "#ede8f5",
+  "bg_image": "bg.png",
+  "fps": 24,
+  "width": 1080,
+  "height": 1920,
+  "intro_gap": 0.3,
+
+  "tts": true,
+  "gpt_sovits_ref": "../../../assets/audio_reference/dimsum_cat_korean_clean.mp3",
+  "gpt_sovits_speed": 0.92,
+  "gpt_sovits_server": "http://127.0.0.1:9880",
+
+  "bg_music": "../../../assets/music/yummy_flavor.mp3",
+  "bg_music_start": "00:00",
+  "bg_volume": 0.22,
+  "tts_volume": 1.5,
+  "tts_pitch": 1.0,
+
+  "beats": [
+    {
+      "time": 0.0,
+      "text": "피오브이: 기 빨려서 방전됐어..",
+      "sub": "POV: your social battery is at 0% 🪫",
+      "rich_text": [
+        {"text": "POV: ", "color": "#ff5252"},
+        {"text": "기 빨려서 ", "color": "#2a2a2a"},
+        {"text": "방전됐어..", "color": "#757575"}
+      ],
+      "animation": "sleepy_yawn",
+      "pos": "center",
+      "scale": 1.1,
+      "text_size": "big"
+    },
+    {
+      "time": 3.0,
+      "text": "사람들 틈에서.. 아, 그래! 맞아!",
+      "sub": "stuck in a crowd... trying to act normal 🙂",
+      "rich_text": [
+        {"text": "사람들 틈에서.. ", "color": "#757575"},
+        {"text": "아, 그래! 맞아!", "color": "#2a2a2a"}
+      ],
+      "animation": "normal_talk",
+      "pos": "center-high",
+      "scale": 0.95,
+      "text_size": "normal"
+    },
+    {
+      "time": 6.0,
+      "text": "제발 아무도 나한테 관심 주지 마..",
+      "sub": "avoiding eye contact at all costs...",
+      "rich_text": [
+        {"text": "제발 아무도 나한테 ", "color": "#2a2a2a"},
+        {"text": "관심 주지 마..", "color": "#ff5252"}
+      ],
+      "animation": "panic",
+      "pos": "center-low",
+      "scale": 1.6,
+      "text_size": "big"
+    },
+    {
+      "time": 9.0,
+      "text": "나 화장실 좀 다녀올게.. 퓨",
+      "sub": "hiding in the restroom to recharge",
+      "rich_text": [
+        {"text": "나 화장실 좀 ", "color": "#2a2a2a"},
+        {"text": "다녀올게.. 퓨", "color": "#757575"}
+      ],
+      "animation": "peekaboo",
+      "pos": "left",
+      "scale": 0.9,
+      "text_size": "normal"
+    },
+    {
+      "time": 12.0,
+      "text": "역시 집이 최고야.. 너무 편해!",
+      "sub": "finally back in my safe place 🏠",
+      "rich_text": [
+        {"text": "역시 ", "color": "#2a2a2a"},
+        {"text": "집이 최고야.. ", "color": "#ffc107"},
+        {"text": "너무 편해!", "color": "#2a2a2a"}
+      ],
+      "animation": "cozy_blanket",
+      "pos": "center",
+      "scale": 1.4,
+      "text_size": "huge"
+    },
+    {
+      "time": 15.5,
+      "text": "이제 아무도 깨우지 마...",
+      "sub": "do not disturb mode: ON 💤",
+      "rich_text": [
+        {"text": "이제 아무도 ", "color": "#2a2a2a"},
+        {"text": "깨우지 마...", "color": "#757575"}
+      ],
+      "animation": "sleepy_yawn",
+      "pos": "center-low",
+      "scale": 1.0,
+      "text_size": "normal"
+    }
+  ]
+}

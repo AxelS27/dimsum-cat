@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import dataclasses
+import gc
 import json
 import shutil
 import subprocess
@@ -115,7 +116,7 @@ def load_story_json(path: Path, args: argparse.Namespace) -> RenderConfig:
     output_name = data.get("output", args.output) or story_dir.name
     return RenderConfig(
         beats             = beats,
-        default_animation = data.get("animation", args.animation),
+        default_animation = data.get("animation") or data.get("default_animation") or args.animation,
         output_name       = output_name,
         story_dir         = story_dir,
         title             = data.get("title", ""),
@@ -133,11 +134,22 @@ def load_story_json(path: Path, args: argparse.Namespace) -> RenderConfig:
         gpt_sovits_ref    = _resolve_story_path(data.get("gpt_sovits_ref", args.gpt_sovits_ref), story_dir),
         gpt_sovits_server = data.get("gpt_sovits_server", args.gpt_sovits_server),
         gpt_sovits_speed  = float(data.get("gpt_sovits_speed", args.gpt_sovits_speed)),
+        gpt_sovits_temperature = (float(data["gpt_sovits_temperature"]) if data.get("gpt_sovits_temperature") is not None else None),
+        gpt_sovits_top_k       = (int(data["gpt_sovits_top_k"])         if data.get("gpt_sovits_top_k")       is not None else None),
+        gpt_sovits_top_p       = (float(data["gpt_sovits_top_p"])       if data.get("gpt_sovits_top_p")       is not None else None),
+        gpt_sovits_rep_penalty = (float(data["gpt_sovits_rep_penalty"]) if data.get("gpt_sovits_rep_penalty") is not None else None),
+        gpt_sovits_prompt_text = data.get("gpt_sovits_prompt_text", ""),
+        tts_pitch_normalize    = bool(data.get("tts_pitch_normalize", False)),
+        tts_pitch_target       = float(data.get("tts_pitch_target", 0.0)),
         bg_music          = _resolve_story_path(data.get("bg_music", args.bg_music), story_dir),
         bg_music_start    = data.get("bg_music_start", ""),
         bg_volume         = float(data.get("bg_volume",  0.09)),
         tts_volume        = float(data.get("tts_volume", 1.4)),
         tts_pitch         = float(data.get("tts_pitch",  1.0)),
+        bg_music_fade_in  = float(data.get("bg_music_fade_in", 0.0)),
+        intro_gap         = float(data.get("intro_gap", 0.8)),
+        between_gap       = float(data.get("between_gap", 0.65)),
+        silent_beat_dur   = float(data.get("silent_beat_dur", 1.5)),
     )
 
 
@@ -271,6 +283,20 @@ def _beat_path(out_base: Path, i: int) -> Path:
     return _beats_dir(out_base) / f"beat_{i:02d}.mp3"
 
 
+def _render_png_sequence_chunked(config: RenderConfig, frames_dir: Path, chunk_frames: int = 120) -> None:
+    """Render frames in small batches so long 1080p videos do not exhaust RAM."""
+    frames_dir.mkdir(parents=True, exist_ok=True)
+    total_frames = max(1, int(config.duration * config.fps))
+    for start in range(0, total_frames, chunk_frames):
+        end = min(start + chunk_frames, total_frames)
+        print(f"  Rendering frames {start:04d}-{end - 1:04d} / {total_frames - 1:04d}")
+        frames = render_video_frames(config, frame_start=start, frame_end=end)
+        for i, frame in enumerate(frames, start=start):
+            frame.save(frames_dir / f"frame_{i:04d}.png")
+        del frames
+        gc.collect()
+
+
 def _save_beats(tmp_dir: Path, out_base: Path, beats: list) -> None:
     """Copy generated clips from _tts_tmp to beats/ with readable names."""
     bd = _beats_dir(out_base)
@@ -326,10 +352,14 @@ def render(config: RenderConfig, tts_only: bool = False, audio_only: bool = Fals
             _gpt_sovits_clip(
                 tts_text, config.gpt_sovits_ref,
                 wav, server=config.gpt_sovits_server,
-                speed=beat.tts_speed, temperature=beat.tts_temperature,
+                speed=beat.tts_speed if beat.tts_speed is not None else config.gpt_sovits_speed,
+                temperature=beat.tts_temperature if beat.tts_temperature is not None else config.gpt_sovits_temperature,
+                top_k=config.gpt_sovits_top_k,
+                top_p=config.gpt_sovits_top_p,
+                rep_penalty_override=config.gpt_sovits_rep_penalty,
+                prompt_text=config.gpt_sovits_prompt_text,
             )
             import subprocess as _sp
-            from src.utils import find_ffmpeg
             ffmpeg = find_ffmpeg()
             mp3 = tmp_dir / f"beat_{regen_beat:02d}.mp3"
             _sp.run([ffmpeg, "-y", "-i", str(wav), "-c:a", "libmp3lame", "-b:a", "128k", str(mp3)],
@@ -368,7 +398,12 @@ def render(config: RenderConfig, tts_only: bool = False, audio_only: bool = Fals
         )
         if isinstance(tts_ok, dict):
             clip_durations: dict[int, float] = tts_ok
-            new_beats, new_duration = _recalculate_beat_times(config.beats, clip_durations)
+            new_beats, new_duration = _recalculate_beat_times(
+                config.beats, clip_durations,
+                intro_gap=config.intro_gap,
+                between_gap=config.between_gap,
+                silent_beat_dur=config.silent_beat_dur,
+            )
             config = dataclasses.replace(config, beats=new_beats, duration=new_duration)
             tts_ok = True
         audio_path = out_base / f"{config.output_name}_audio.mp3"
@@ -383,10 +418,22 @@ def render(config: RenderConfig, tts_only: bool = False, audio_only: bool = Fals
             gpt_sovits_speed=config.gpt_sovits_speed,
             return_durations=True,
             tts_pitch=config.tts_pitch,
+            gpt_sovits_temperature=config.gpt_sovits_temperature,
+            gpt_sovits_top_k=config.gpt_sovits_top_k,
+            gpt_sovits_top_p=config.gpt_sovits_top_p,
+            gpt_sovits_rep_penalty=config.gpt_sovits_rep_penalty,
+            gpt_sovits_prompt_text=config.gpt_sovits_prompt_text,
+            pitch_normalize=config.tts_pitch_normalize,
+            pitch_target=config.tts_pitch_target,
         )
         if isinstance(tts_ok, dict):
             clip_durations: dict[int, float] = tts_ok
-            new_beats, new_duration = _recalculate_beat_times(config.beats, clip_durations)
+            new_beats, new_duration = _recalculate_beat_times(
+                config.beats, clip_durations,
+                intro_gap=config.intro_gap,
+                between_gap=config.between_gap,
+                silent_beat_dur=config.silent_beat_dur,
+            )
             config = dataclasses.replace(config, beats=new_beats, duration=new_duration)
             tts_ok = True
 
@@ -418,6 +465,7 @@ def render(config: RenderConfig, tts_only: bool = False, audio_only: bool = Fals
                     audio_path, audio_out,
                     bg_music=bg_music_path,
                     bg_music_start=config.bg_music_start,
+                    bg_music_fade_in=config.bg_music_fade_in,
                     bg_volume=config.bg_volume,
                     tts_volume=config.tts_volume,
                 )
@@ -431,8 +479,8 @@ def render(config: RenderConfig, tts_only: bool = False, audio_only: bool = Fals
     if not remix_audio:
         if remix_audio and not mp4_path.exists():
             raise RuntimeError(f"--remix-audio requires an existing video.mp4 at {mp4_path}")
-        frames = render_video_frames(config)
-        save_png_sequence(frames, frames_dir)
+        frames = None
+        _render_png_sequence_chunked(config, frames_dir)
         save_mp4(frames_dir, mp4_path, config.fps, title=config.title, description=config.description)
 
     # ── Phase 3: Mix TTS audio at retimed timestamps + mux ───────────────────
@@ -449,7 +497,7 @@ def render(config: RenderConfig, tts_only: bool = False, audio_only: bool = Fals
             )
             shutil.rmtree(out_base / "_tts_tmp", ignore_errors=True)
             if mix_ok:
-                mux_audio_into_mp4(mp4_path, audio_path, bg_music=bg_music_path, bg_music_start=config.bg_music_start, bg_volume=config.bg_volume, tts_volume=config.tts_volume)
+                mux_audio_into_mp4(mp4_path, audio_path, bg_music=bg_music_path, bg_music_start=config.bg_music_start, bg_music_fade_in=config.bg_music_fade_in, bg_volume=config.bg_volume, tts_volume=config.tts_volume)
                 audio_path.unlink(missing_ok=True)
                 suffix = " + background music" if bg_music_path else ""
                 print(f"  TTS muxed into MP4{suffix}.")
@@ -468,12 +516,12 @@ def render(config: RenderConfig, tts_only: bool = False, audio_only: bool = Fals
              "-c:a", "libmp3lame", "-b:a", "64k", str(silence)],
             stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True,
         )
-        mux_audio_into_mp4(mp4_path, silence, bg_music=bg_music_path, bg_music_start=config.bg_music_start, bg_volume=config.bg_volume, tts_volume=config.tts_volume)
+        mux_audio_into_mp4(mp4_path, silence, bg_music=bg_music_path, bg_music_start=config.bg_music_start, bg_music_fade_in=config.bg_music_fade_in, bg_volume=config.bg_volume, tts_volume=config.tts_volume)
         silence.unlink(missing_ok=True)
         print("  Background music muxed into MP4.")
 
     gif_created = False
-    if config.save_gif:
+    if config.save_gif and frames is not None:
         save_gif(frames, gif_path, config.fps)
         gif_created = True
 

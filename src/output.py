@@ -80,6 +80,7 @@ def mux_audio_into_mp4(
     bg_music: Path | None = None,
     bg_volume: float = 0.09,
     bg_music_start: str = "",
+    bg_music_fade_in: float = 0.0,
     tts_volume: float = 1.4,
 ) -> None:
     """Mux TTS audio (+ optional background music) into MP4 in-place.
@@ -94,6 +95,9 @@ def mux_audio_into_mp4(
     if bg_music and bg_music.exists():
         start_sec = _parse_music_start(bg_music_start)
         ss_args = ["-ss", f"{start_sec:.3f}"] if start_sec > 0 else []
+        bgm_filter = f"[2]volume={bg_volume}"
+        if bg_music_fade_in > 0:
+            bgm_filter += f",afade=t=in:st=0:d={bg_music_fade_in}"
         # stream_loop -1 loops the music file indefinitely;
         # -shortest stops everything when the video ends.
         # TTS track is boosted slightly; bgm sits quietly underneath.
@@ -103,7 +107,7 @@ def mux_audio_into_mp4(
              "-i", str(audio_path),
              "-stream_loop", "-1", *ss_args, "-i", str(bg_music),
              "-filter_complex",
-             f"[1]volume={tts_volume}[tts];[2]volume={bg_volume}[bgm];"
+             f"[1]volume={tts_volume}[tts];{bgm_filter}[bgm];"
              "[tts][bgm]amix=inputs=2:normalize=0:dropout_transition=0[aout]",
              "-map", "0:v", "-map", "[aout]",
              "-c:v", "copy", "-c:a", "aac", "-b:a", "128k", "-shortest",
@@ -131,6 +135,7 @@ def mix_audio_preview(
     bg_music: Path | None = None,
     bg_volume: float = 0.09,
     bg_music_start: str = "",
+    bg_music_fade_in: float = 0.0,
     tts_volume: float = 1.4,
 ) -> None:
     """Mix TTS audio with optional bg_music into a standalone mp3 (no video)."""
@@ -138,12 +143,15 @@ def mix_audio_preview(
     if bg_music and bg_music.exists():
         start_sec = _parse_music_start(bg_music_start)
         ss_args = ["-ss", f"{start_sec:.3f}"] if start_sec > 0 else []
+        bgm_filter = f"[1]volume={bg_volume}"
+        if bg_music_fade_in > 0:
+            bgm_filter += f",afade=t=in:st=0:d={bg_music_fade_in}"
         result = subprocess.run(
             [ffmpeg, "-y",
              "-i", str(tts_path),
              "-stream_loop", "-1", *ss_args, "-i", str(bg_music),
              "-filter_complex",
-             f"[0]volume={tts_volume}[tts];[1]volume={bg_volume}[bgm];"
+             f"[0]volume={tts_volume}[tts];{bgm_filter}[bgm];"
              "[tts][bgm]amix=inputs=2:normalize=0:dropout_transition=0:duration=first[aout]",
              "-map", "[aout]",
              "-c:a", "libmp3lame", "-b:a", "128k",

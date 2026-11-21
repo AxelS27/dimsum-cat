@@ -14,7 +14,7 @@
 GPT-SoVITS runs as a local API server on `http://127.0.0.1:9880`.
 
 - **Start it** from the project root: `.\start_tts.ps1`
-- Installed at: `D:\GPT-SoVITS`
+- Installed at: `D:\v\GPT-SoVITS`
 - Wait for the server to be ready before rendering with TTS
 - Check status: `Invoke-WebRequest -Uri http://127.0.0.1:9880/tts -Method GET`
 

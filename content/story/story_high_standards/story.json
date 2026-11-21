@@ -1,0 +1,137 @@
+{
+  "title": "내 기준은 높아",
+  "description": "내 기준 진짜 높다니까... 근데 걔가 안녕 했잖아 🐱\n\n#dimsumcat #kawaii #fyp #foryou #viral #kpop #kdrama #cdrama #anime #cute #blowthisup #xyzbca #trending #coquette #softlife\n#crush #firstlove #schoolcrush #lovestory #romance #relatable #storytime",
+  "pinned_comment": "너는 어떤 한마디에 바로 흔들려? 😭",
+
+  "default_animation": "sassy_pose",
+  "character": "dimsum_cat",
+  "bg": "#fdf0f5",
+  "bg_image": "",
+  "fps": 24,
+  "width": 1080,
+  "height": 1920,
+  "duration": 18.0,
+
+  "tts": true,
+  "tts_provider": "gpt_sovits",
+  "gpt_sovits_ref": "../../../assets/audio_reference/dimsum_cat_korean.mp3",
+  "gpt_sovits_speed": 0.92,
+  "gpt_sovits_server": "http://127.0.0.1:9880",
+
+  "bg_music": "../../../assets/music/canttakemyeyesoffyou.mp3",
+  "bg_music_start": "59",
+  "bg_volume": 0.1,
+  "tts_volume": 1.6,
+  "tts_pitch": 1.0,
+  "intro_gap": 0.7,
+  "between_gap": 0.6,
+  "silent_beat_dur": 1.5,
+
+  "watermark": "",
+
+  "beats": [
+    {
+      "time": 0.0,
+      "text": "내 기준 진짜 높아, 아무나 안 돼",
+      "sub": "My standards are really high.",
+      "rich_text": [
+        {"text": "내 기준 ", "color": "#2a2a2a"},
+        {"text": "진짜 높아", "color": "#e91e8c"},
+        {"text": ", 아무나 안 돼", "color": "#2a2a2a"}
+      ],
+      "animation": "sassy_pose",
+      "character": "",
+      "pos": "left-high",
+      "scale": 1.0,
+      "text_size": "big",
+      "bg_image": "",
+      "tts_speed": null,
+      "tts_temperature": null,
+      "tts_delay": 0.0,
+      "after_gap": null,
+      "rich_text_sub": []
+    },
+    {
+      "time": 3.5,
+      "text": "키도 크고, 다정하고, 나만 봐야 해",
+      "sub": "Tall, kind, and only looks at me.",
+      "rich_text": [
+        {"text": "키도 크고, ", "color": "#2a2a2a"},
+        {"text": "다정하고", "color": "#e91e8c"},
+        {"text": ", 나만 봐야 해", "color": "#2a2a2a"}
+      ],
+      "animation": "proud",
+      "character": "",
+      "pos": "right",
+      "scale": 1.14,
+      "text_size": "big",
+      "bg_image": "",
+      "tts_speed": null,
+      "tts_temperature": null,
+      "tts_delay": 0.0,
+      "after_gap": null,
+      "rich_text_sub": []
+    },
+    {
+      "time": 7.0,
+      "text": "난 절대 쉽게 안 흔들린다니까",
+      "sub": "I never fold that easily.",
+      "rich_text": [
+        {"text": "난 절대 ", "color": "#2a2a2a"},
+        {"text": "쉽게 안 흔들린다니까", "color": "#e91e8c"}
+      ],
+      "animation": "smirk",
+      "character": "",
+      "pos": "center-low",
+      "scale": 1.24,
+      "text_size": "big",
+      "bg_image": "",
+      "tts_speed": null,
+      "tts_temperature": null,
+      "tts_delay": 0.0,
+      "after_gap": null,
+      "rich_text_sub": []
+    },
+    {
+      "time": 10.5,
+      "text": "근데 걔가 나한테 안녕 했거든",
+      "sub": "But then he said hi to me.",
+      "rich_text": [
+        {"text": "근데 걔가 나한테 ", "color": "#2a2a2a"},
+        {"text": "안녕", "color": "#ff6b6b"},
+        {"text": " 했거든", "color": "#2a2a2a"}
+      ],
+      "animation": "shy_blush",
+      "character": "",
+      "pos": "left",
+      "scale": 1.32,
+      "text_size": "big",
+      "bg_image": "",
+      "tts_speed": 0.94,
+      "tts_temperature": 1.2,
+      "tts_delay": 0.0,
+      "after_gap": null,
+      "rich_text_sub": []
+    },
+    {
+      "time": 14.0,
+      "text": "응, 됐어. 바로 합격이야",
+      "sub": "Yup. That's it. He passed.",
+      "rich_text": [
+        {"text": "응, 됐어. ", "color": "#2a2a2a"},
+        {"text": "바로 합격이야", "color": "#e91e8c"}
+      ],
+      "animation": "heart_eyes",
+      "character": "",
+      "pos": "center",
+      "scale": 1.42,
+      "text_size": "huge",
+      "bg_image": "",
+      "tts_speed": 1.08,
+      "tts_temperature": 1.55,
+      "tts_delay": 0.0,
+      "after_gap": null,
+      "rich_text_sub": []
+    }
+  ]
+}

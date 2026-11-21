@@ -68,6 +68,34 @@ def _has_repetition(text: str) -> bool:
     return bool(re.search(r'(.{1,3})\1', text))
 
 
+def _measure_f0(path: Path, sr: int = 16000) -> float:
+    """Median fundamental frequency (Hz) via librosa pYIN. 0.0 if unvoiced.
+
+    pYIN is robust to the octave errors that plague raw autocorrelation, so it's
+    reliable enough to drive pitch normalization.
+    """
+    import librosa, numpy as np  # type: ignore[import]
+    y, _ = librosa.load(str(path), sr=sr)
+    f0, _, _ = librosa.pyin(y, fmin=80, fmax=500, sr=sr, frame_length=2048)
+    fv = f0[~np.isnan(f0)]
+    return float(np.median(fv)) if len(fv) else 0.0
+
+
+def _pitch_shift_file(ffmpeg: str, path: Path, semitones: float) -> None:
+    """Shift a clip's pitch by N semitones in place (SR-aware phase vocoder)."""
+    import librosa, soundfile as sf  # type: ignore[import]
+    y, sr = librosa.load(str(path), sr=None)   # native sample rate (GPT-SoVITS = 32000)
+    y2 = librosa.effects.pitch_shift(y, sr=sr, n_steps=semitones)
+    tmp_wav = path.with_suffix(".pnshift.wav")
+    tmp_mp3 = path.with_suffix(".pnshift.mp3")
+    sf.write(str(tmp_wav), y2, sr)
+    subprocess.run([ffmpeg, "-y", "-i", str(tmp_wav), "-c:a", "libmp3lame", "-b:a", "128k", str(tmp_mp3)],
+                   stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    tmp_wav.unlink(missing_ok=True)
+    if tmp_mp3.exists():
+        tmp_mp3.replace(path)
+
+
 def _gpt_sovits_clip(
     text: str,
     ref_audio: str,
@@ -75,22 +103,30 @@ def _gpt_sovits_clip(
     server: str = "http://127.0.0.1:9880",
     speed: float | None = None,
     temperature: float | None = None,
+    top_k: int | None = None,
+    top_p: float | None = None,
+    rep_penalty_override: float | None = None,
+    prompt_text: str = "",
 ) -> None:
     """Generate one clip via local GPT-SoVITS API server."""
     import requests  # type: ignore[import]
     auto_speed, auto_temp, auto_rep = _detect_emotion(text)
     # Lower repetition_penalty for onomatopoeia so repeated syllables don't get cut
-    rep_penalty = 1.05 if _has_repetition(text) else auto_rep
+    if rep_penalty_override is not None:
+        rep_penalty = rep_penalty_override
+    else:
+        rep_penalty = 1.05 if _has_repetition(text) else auto_rep
     resp = requests.post(f"{server}/tts", json={
         "text": text,
         "text_lang": "ko",
         "ref_audio_path": ref_audio,
         "prompt_lang": "ko",
-        "prompt_text": "",
+        "prompt_text": prompt_text,
         "speed_factor":       speed       if speed       is not None else auto_speed,
         "temperature":        temperature if temperature is not None else auto_temp,
         "repetition_penalty": rep_penalty,
-        "top_k": 15,
+        "top_k": top_k if top_k is not None else 15,
+        "top_p": top_p if top_p is not None else 1.0,
         "streaming_mode": False,
         "batch_size": 1,
     }, timeout=120)
@@ -105,10 +141,17 @@ def build_tts_audio(
     out_path: Path,
     gpt_sovits_ref: str = "",
     gpt_sovits_server: str = "http://127.0.0.1:9880",
-    gpt_sovits_speed: float = 0.88,
+    gpt_sovits_speed: float | None = None,
     return_durations: bool = False,
     pregenerated_dir: Path | None = None,
     tts_pitch: float = 1.0,
+    gpt_sovits_temperature: float | None = None,
+    gpt_sovits_top_k: int | None = None,
+    gpt_sovits_top_p: float | None = None,
+    gpt_sovits_rep_penalty: float | None = None,
+    gpt_sovits_prompt_text: str = "",
+    pitch_normalize: bool = False,
+    pitch_target: float = 0.0,
 ) -> bool | dict:
     """Generate a timed audio track from beat texts using ffmpeg filter_complex.
 
@@ -142,10 +185,16 @@ def build_tts_audio(
             for i, b in speak_beats:
                 tts_text = b.text.replace("~", "").strip()
                 print(f"    GPT-SoVITS: {tts_text}")
+                temp = b.tts_temperature if b.tts_temperature is not None else gpt_sovits_temperature
+                sp = b.tts_speed if b.tts_speed is not None else speed
                 _gpt_sovits_clip(tts_text, ref, tmp_dir / f"beat_{i:02d}.wav",
                                  server=server,
-                                 speed=b.tts_speed,
-                                 temperature=b.tts_temperature)
+                                 speed=sp,
+                                 temperature=temp,
+                                 top_k=gpt_sovits_top_k,
+                                 top_p=gpt_sovits_top_p,
+                                 rep_penalty_override=gpt_sovits_rep_penalty,
+                                 prompt_text=gpt_sovits_prompt_text)
         except Exception as e:
             print(f"  TTS (GPT-SoVITS) failed: {e}")
             shutil.rmtree(tmp_dir, ignore_errors=True)
@@ -198,6 +247,30 @@ def build_tts_audio(
             if tmp_p.exists():
                 tmp_p.replace(p)
 
+    # ── Pitch normalization — unify register across independently-generated clips ──
+    # Each GPT-SoVITS clip is sampled independently, so register drifts ±2 semitones
+    # between beats. Measure F0 (pYIN) and shift each clip to a common target.
+    if not pregenerated_dir and pitch_normalize:
+        import math, statistics
+        f0s: dict[int, float] = {}
+        for i, _ in speak_beats:
+            p = tmp_dir / f"beat_{i:02d}.mp3"
+            if p.exists():
+                f0s[i] = _measure_f0(p)
+        voiced = [v for v in f0s.values() if v > 0]
+        if voiced:
+            target = pitch_target if pitch_target > 0 else statistics.median(voiced)
+            for i, _ in speak_beats:
+                f0 = f0s.get(i, 0.0)
+                if f0 <= 0:
+                    continue
+                semis = 12.0 * math.log2(target / f0)
+                if abs(semis) < 0.5:
+                    continue   # already close — leave untouched to avoid artifacts
+                semis = max(-3.0, min(3.0, semis))
+                _pitch_shift_file(ffmpeg, tmp_dir / f"beat_{i:02d}.mp3", semis)
+                print(f"    pitch-normalized beat {i:02d}: {f0:.0f}Hz -> {target:.0f}Hz")
+
     # ── Collect clips that were actually written ──────────────────────────────
     clip_list = [
         (i, b) for i, b in speak_beats
@@ -221,8 +294,9 @@ def build_tts_audio(
     # ── Fade-out each clip (only if it overflows into the next beat) ─────────
     for idx, (i, beat) in enumerate(clip_list):
         p = tmp_dir / f"beat_{i:02d}.mp3"
+        start_time = beat.time + max(0.0, getattr(beat, "tts_delay", 0.0))
         next_time = clip_list[idx + 1][1].time if idx + 1 < len(clip_list) else duration
-        max_dur = next_time - beat.time - 0.05
+        max_dur = next_time - start_time - 0.05
         if max_dur <= 0:
             continue
         clip_dur = _audio_duration(ffmpeg, p)
@@ -251,7 +325,7 @@ def build_tts_audio(
 
     for j, (i, beat) in enumerate(clip_list):
         p = tmp_dir / f"beat_{i:02d}.mp3"
-        delay_ms = int(beat.time * 1000)
+        delay_ms = int((beat.time + max(0.0, getattr(beat, "tts_delay", 0.0))) * 1000)
         ffmpeg_inputs += ["-i", str(p)]
         filter_parts.append(f"[{j}]adelay={delay_ms}|{delay_ms}[a{j}]")
         mix_labels.append(f"[a{j}]")
