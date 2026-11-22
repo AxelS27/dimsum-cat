@@ -84,11 +84,25 @@ def main() -> None:
 
     story_path = args.story
     if story_path.is_dir():
-        story_path = story_path / "story.json"
+        candidates = [
+            story_path / "story.yaml",
+            story_path / "story.yml",
+            story_path / "story.json",
+        ]
+        found = next((c for c in candidates if c.exists()), None)
+        if not found:
+            raise FileNotFoundError(f"No story.yaml or story.json found in {story_path}")
+        story_path = found
+
     story_path = story_path.resolve()
     story_dir  = story_path.parent
 
-    data = json.loads(story_path.resolve().read_text(encoding="utf-8"))
+    raw_text = story_path.read_text(encoding="utf-8")
+    if story_path.suffix in (".yaml", ".yml"):
+        import yaml
+        data = yaml.safe_load(raw_text) or {}
+    else:
+        data = json.loads(raw_text) or {}
     raw_beats = data.get("beats", [])
 
     width             = int(data.get("width",  1080))

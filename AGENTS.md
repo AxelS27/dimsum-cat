@@ -21,10 +21,10 @@ GPT-SoVITS runs as a local API server on `http://127.0.0.1:9880`.
 ## Rendering Pipeline
 
 ```
-story.json → video_generator.py → video.mp4 (with TTS + BGM)
+story.yaml (or story.json) → video_generator.py → video.mp4 (with TTS + BGM)
 ```
 
-- Start TTS server first if `"tts": true` in story.json
+- Start TTS server first if `tts: true` in story.yaml / story.json
 - Render: `.venv\Scripts\python video_generator.py --story content/<category>/<name>`
 - Output: `content/<category>/<name>/video.mp4`
 
