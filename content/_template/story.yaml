@@ -48,12 +48,25 @@ pinned_comment: ""
 # ==============================================================================
 # Beats (Timeline)
 # ==============================================================================
-# Available camera effects:
-#   "zoom_punch"   - Dynamic beat drop punch zoom with elastic spring back
-#   "slow_zoom_in" - Slow cinematic drift zoom towards center
-#   "rumble"       - Screen shake/earthquake rumble
-#   "sway"         - Gentle handheld camera sway
-#   "flash"        - Exposure bloom flash on beat impact
+# Cinematic Director Camera Options (camera):
+#   - "static"       - Rock-solid stationary camera (0% shake, calm & easy on the eyes)
+#   - "crash_zoom"   - Super snappy dramatic snap-zoom onto target character/face
+#   - "zoom_punch"   - Elastic beat drop punch zoom that springs back smoothly
+#   - "slow_zoom_in" - Slow cinematic drift zoom towards center or target
+#   - "slow_zoom_out"- Slow cinematic pull-back
+#   - "tracking"     - Dolly camera following character from pan_from to pan_to
+#   - "whip_pan"     - Fast cinematic sweep from one character to another
+#   - "dutch_tilt"   - Angled camera for suspense or tension (roll: -5.0 to +5.0)
+#   - "sway"         - Gentle handheld vlog drift
+#   - "rumble"       - Earthquake impact shake
+#
+# Camera Target & Reactive Sync:
+#   camera:
+#     type: "crash_zoom"
+#     target: "dimsum_cat"        # camera focuses directly on this character!
+#     zoom: 1.35
+#     reactive_actor: "dimsum_cat"# camera shakes in lockstep with character's motion!
+#     reactive_factor: 0.5
 #
 # Available scene transitions:
 #   "crossfade"    - Smooth cross-dissolve with previous beat

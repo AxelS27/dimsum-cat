@@ -92,6 +92,22 @@ class Accessory:
 
 
 @dataclass
+class CameraConfig:
+    """Settings for the virtual cinematic director camera."""
+    type: str = "static"                      # "static", "zoom_punch", "slow_zoom_in", "slow_zoom_out", "crash_zoom", "tracking", "whip_pan", "dutch_tilt", "sway", "rumble"
+    target: str | list | tuple = ""           # actor character name ("dimsum_cat", "taeho") or [x, y] coordinates
+    zoom: float = 1.0                         # target zoom factor (>1.0 = zoom in)
+    zoom_start: float | None = None           # starting zoom factor (if interpolating)
+    intensity: float = 1.0                    # movement/shake intensity multiplier
+    roll: float = 0.0                         # Dutch tilt angle in degrees
+    pan_from: str | list | tuple | None = None # starting camera center [x, y]
+    pan_to: str | list | tuple | None = None   # ending camera center [x, y]
+    reactive_actor: str = ""                  # character name to sync camera motion/shake with
+    reactive_factor: float = 0.5              # coupling strength (0.0 to 1.0)
+    duration: float | None = None             # movement duration in seconds (None = beat_dur)
+
+
+@dataclass
 class StoryBeat:
     """One moment in the video story."""
     time: float            # seconds from start
@@ -116,13 +132,36 @@ class StoryBeat:
     motion: str = ""                       # motion behavior preset name ("heavy_bounce", "float_gentle", etc.)
     motion_speed: float = 1.0              # speed multiplier for motion physics
     motion_intensity: float = 1.0          # intensity/amplitude multiplier for motion physics
-    camera: str = ""                       # virtual camera preset ("zoom_punch", "slow_zoom_in", "rumble", "sway", "static")
+    camera: str | dict | CameraConfig = "static"  # virtual camera preset or dict
     camera_intensity: float = 1.0          # strength of camera movement/shake
     transition: str = ""                   # scene transition ("flash", "crossfade", "circle_wipe", "dip_black", "none")
     transition_dur: float = 0.22           # duration of scene transition in seconds
     actors: list[ActorConfig] = field(default_factory=list)  # multi-character actors on stage
     vfx: list[dict] = field(default_factory=list)            # kawaii particle & visual FX triggers
     ground_shadow: bool = True                               # contact shadow toggle
+
+    def get_camera_config(self) -> CameraConfig:
+        """Resolve camera settings into a strongly-typed CameraConfig."""
+        if isinstance(self.camera, CameraConfig):
+            return self.camera
+        if isinstance(self.camera, dict):
+            return CameraConfig(
+                type            = str(self.camera.get("type", "static")),
+                target          = self.camera.get("target", ""),
+                zoom            = float(self.camera.get("zoom", 1.0)),
+                zoom_start      = float(self.camera["zoom_start"]) if "zoom_start" in self.camera else None,
+                intensity       = float(self.camera.get("intensity", self.camera_intensity)),
+                roll            = float(self.camera.get("roll", 0.0)),
+                pan_from        = self.camera.get("pan_from"),
+                pan_to          = self.camera.get("pan_to"),
+                reactive_actor  = str(self.camera.get("reactive_actor", "")),
+                reactive_factor = float(self.camera.get("reactive_factor", 0.5)),
+                duration        = float(self.camera["duration"]) if "duration" in self.camera else None,
+            )
+        if isinstance(self.camera, str):
+            c_str = self.camera.strip() or "static"
+            return CameraConfig(type=c_str, intensity=self.camera_intensity)
+        return CameraConfig(type="static", intensity=self.camera_intensity)
 
     def get_actors(self, default_character: str, default_animation: str) -> list[ActorConfig]:
         """Return list of active actors, resolving single-character beat fallback."""

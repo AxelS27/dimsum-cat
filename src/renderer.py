@@ -45,12 +45,14 @@ def make_background(
     bg_image: str = "",
     story_dir: "Path | None" = None,
     zoom: float = 1.0,
+    center_x: float = 0.5,
+    center_y: float = 0.5,
     pan_x: float = 0.0,
     pan_y: float = 0.0,
     shake_x: float = 0.0,
     shake_y: float = 0.0,
 ) -> Image.Image:
-    """Return background canvas with camera zoom, pan, and rumble."""
+    """Return background canvas with virtual camera center, zoom, and shake."""
     if bg_image:
         from pathlib import Path
         from src.models import ROOT
@@ -58,8 +60,8 @@ def make_background(
         if not p.is_absolute():
             p = (story_dir / bg_image) if story_dir else (ROOT / bg_image)
 
-        # Cache oversized base (15% larger) so camera zoom/pan/shake crops cleanly without borders
-        ov_w, ov_h = int(size[0] * 1.15), int(size[1] * 1.15)
+        # Cache oversized base (35% larger) so camera zoom/pan/track crops cleanly without borders
+        ov_w, ov_h = int(size[0] * 1.35), int(size[1] * 1.35)
         cache_key_ov = f"{p}_ov_{ov_w}x{ov_h}"
         if cache_key_ov not in _BG_IMAGE_CACHE:
             img = Image.open(p).convert("RGBA")
@@ -69,18 +71,21 @@ def make_background(
 
         base_ov = _BG_IMAGE_CACHE[cache_key_ov]
 
-        if abs(zoom - 1.0) < 0.005 and abs(pan_x) < 0.001 and abs(pan_y) < 0.001 and abs(shake_x) < 0.5 and abs(shake_y) < 0.5:
+        eff_cx = center_x if (center_x != 0.5 or (pan_x == 0.0 and pan_y == 0.0)) else (0.5 + pan_x)
+        eff_cy = center_y if (center_y != 0.5 or (pan_x == 0.0 and pan_y == 0.0)) else (0.5 + pan_y)
+
+        if abs(zoom - 1.0) < 0.005 and abs(eff_cx - 0.5) < 0.001 and abs(eff_cy - 0.5) < 0.001 and abs(shake_x) < 0.5 and abs(shake_y) < 0.5:
             x0 = (ov_w - size[0]) // 2
             y0 = (ov_h - size[1]) // 2
             return base_ov.crop((x0, y0, x0 + size[0], y0 + size[1])).copy()
 
         # Camera transformed crop
-        clamped_zoom = max(0.85, min(1.25, zoom))
+        clamped_zoom = max(0.75, min(1.80, zoom))
         view_w = max(100, min(ov_w, int(size[0] / clamped_zoom)))
         view_h = max(100, min(ov_h, int(size[1] / clamped_zoom)))
 
-        cx = ov_w / 2.0 + (pan_x * size[0]) + shake_x
-        cy = ov_h / 2.0 + (pan_y * size[1]) + shake_y
+        cx = ov_w * eff_cx + shake_x
+        cy = ov_h * eff_cy + shake_y
         x0 = max(0, min(ov_w - view_w, int(cx - view_w / 2.0)))
         y0 = max(0, min(ov_h - view_h, int(cy - view_h / 2.0)))
 
@@ -369,16 +374,40 @@ def iter_video_frames(
         age = t - beat.time
 
         # ----------------------------------------------------------------
-        # Beat Duration & Virtual Camera
+        # Multi-Actor Staging & Motion Pre-Evaluation
+        # ----------------------------------------------------------------
+        actors = beat.get_actors(config.default_character, config.default_animation)
+        sorted_actors = sorted(actors, key=lambda a: a.z_index)
+
+        # Collect actor positions and evaluate motions for camera coupling
+        actor_positions: dict[str, tuple[float, float]] = {}
+        actor_motions: dict[str, tuple[float, float]] = {}
+        for a in sorted_actors:
+            ch = a.character or config.default_character
+            an = a.animation or config.default_animation
+            p = resolve_pos(a.pos)
+            actor_positions[ch] = p
+            mp = a.motion or resolve_motion_name(an, ch)
+            ms = compute_motion(mp, t=t, age=age, w_scale=w_scale, speed=a.motion_speed, intensity=a.motion_intensity)
+            actor_motions[ch] = (ms.drift_x, ms.bob_px)
+
+        # ----------------------------------------------------------------
+        # Beat Duration & Virtual Cinematic Director Camera
         # ----------------------------------------------------------------
         if beat_idx + 1 < len(beats):
             beat_dur = max(0.1, beats[beat_idx + 1].time - beat.time)
         else:
             beat_dur = max(0.1, config.duration - beat.time)
 
-        cam_preset = getattr(beat, "camera", "") or ("zoom_punch" if beat_idx > 0 else "static")
-        cam_intensity = getattr(beat, "camera_intensity", 1.0)
-        cam = compute_camera(cam_preset, age=age, beat_dur=beat_dur, intensity=cam_intensity)
+        cam_cfg = beat.get_camera_config()
+        cam = compute_camera(
+            cam_cfg,
+            age=age,
+            beat_dur=beat_dur,
+            intensity=cam_cfg.intensity,
+            actor_positions=actor_positions,
+            actor_motions=actor_motions,
+        )
 
         # ----------------------------------------------------------------
         # Compose Background with Virtual Camera
@@ -387,7 +416,7 @@ def iter_video_frames(
         canvas = make_background(
             (config.width, config.height), config.bg,
             bg_image=active_bg_image, story_dir=config.story_dir,
-            zoom=cam.zoom, pan_x=cam.pan_x, pan_y=cam.pan_y,
+            zoom=cam.zoom, center_x=cam.center_x, center_y=cam.center_y,
             shake_x=cam.shake_x, shake_y=cam.shake_y,
         )
 
@@ -444,10 +473,8 @@ def iter_video_frames(
                 canvas.alpha_composite(acc_img.crop((ax0, ay0, ax1, ay1)), (max(0, ax), max(0, ay)))
 
         # ----------------------------------------------------------------
-        # Multi-Actor Staging & Ground Shadows
+        # Multi-Actor Staging & Ground Shadows (Virtual Camera Projected)
         # ----------------------------------------------------------------
-        actors = beat.get_actors(config.default_character, config.default_animation)
-        sorted_actors = sorted(actors, key=lambda a: a.z_index)
         actor_anchors: list[tuple[float, float]] = []
 
         for actor in sorted_actors:
@@ -463,7 +490,7 @@ def iter_video_frames(
             sprite = sprite_frames[schedule[idx % len(schedule)]].copy()
             orig_w, orig_h = orig_size
 
-            # Target position and scale
+            # Target position and scale in world space
             target_cx, target_cy = resolve_pos(actor.pos)
             target_scale = actor.scale
 
@@ -472,10 +499,9 @@ def iter_video_frames(
                 spring = ease_out_back(prog)
                 char_scale = target_scale * (0.60 + 0.40 * spring)
                 rise = (1.0 - ease_out_cubic(prog)) * 0.07
-                char_cy = target_cy + rise
-                char_cx = target_cx
             else:
-                char_cx, char_cy, char_scale = target_cx, target_cy, target_scale
+                char_scale = target_scale
+                rise = 0.0
 
             # Motion behavior physics
             motion_preset = actor.motion or resolve_motion_name(act_anim, act_char)
@@ -488,10 +514,14 @@ def iter_video_frames(
                 intensity=actor.motion_intensity,
             )
             bob_px = motion_state.bob_px
-            char_cx += (motion_state.drift_x + cam.shake_x) / config.width + cam.pan_x
-            char_cy += (cam.shake_y / config.height) + cam.pan_y
-            rot_deg = motion_state.rot_deg + cam.roll_deg + actor.rotate
+            world_cx = target_cx + (motion_state.drift_x / config.width)
+            world_cy = target_cy + rise + (bob_px / config.height)
+
+            # Virtual Camera 2D Projection:
+            screen_cx = 0.5 + (world_cx - cam.center_x) * cam.zoom + (cam.shake_x / config.width)
+            screen_cy = 0.5 + (world_cy - cam.center_y) * cam.zoom + (cam.shake_y / config.height)
             char_scale *= motion_state.scale_mult * cam.zoom
+            rot_deg = motion_state.rot_deg + cam.roll_deg + actor.rotate
             sq_x = motion_state.sq_x
             sq_y = motion_state.sq_y
 
@@ -511,13 +541,12 @@ def iter_video_frames(
                 sprite = sprite.rotate(rot_deg, expand=True, resample=Image.Resampling.BICUBIC)
 
             # Anchor coordinates
-            sx = int(config.width  * char_cx - sprite.width  // 2)
-            sy = int(config.height * char_cy - sprite.height // 2 + bob_px)
-            sy = max(int(config.height * 0.28), sy)
+            sx = int(config.width  * screen_cx - sprite.width  // 2)
+            sy = int(config.height * screen_cy - sprite.height // 2)
 
-            # Contact / Ground Shadow
+            # Contact / Ground Shadow (in camera projected screen space)
             if actor.ground_shadow:
-                ground_y = int(config.height * char_cy + sprite.height // 2 - int(24 * w_scale))
+                ground_screen_y = int(config.height * (0.5 + (target_cy - cam.center_y) * cam.zoom) + sprite.height // 2 - int(24 * w_scale) + cam.shake_y)
                 jump_px = max(0.0, -bob_px)
                 jump_factor = 1.0 / (1.0 + jump_px / (45.0 * w_scale))
                 sh_w = int(sprite.width * 0.58 * sq_x * jump_factor)
@@ -526,9 +555,9 @@ def iter_video_frames(
                 if sh_w > 8 and sh_h > 2 and sh_alpha > 5:
                     sh_img = Image.new("RGBA", (config.width, config.height), (0, 0, 0, 0))
                     sh_draw = ImageDraw.Draw(sh_img)
-                    sh_cx = int(config.width * char_cx)
+                    sh_cx = int(config.width * screen_cx)
                     sh_draw.ellipse(
-                        [sh_cx - sh_w // 2, ground_y - sh_h // 2, sh_cx + sh_w // 2, ground_y + sh_h // 2],
+                        [sh_cx - sh_w // 2, ground_screen_y - sh_h // 2, sh_cx + sh_w // 2, ground_screen_y + sh_h // 2],
                         fill=(20, 25, 35, sh_alpha),
                     )
                     sh_img = sh_img.filter(ImageFilter.GaussianBlur(radius=int(6 * w_scale)))
@@ -543,7 +572,7 @@ def iter_video_frames(
                     (max(0, sx), max(0, sy)),
                 )
 
-            actor_anchors.append((config.width * char_cx, config.height * char_cy))
+            actor_anchors.append((config.width * screen_cx, config.height * screen_cy))
 
         # ----------------------------------------------------------------
         # Kawaii VFX Particle Overlay
