@@ -8,6 +8,7 @@
 # - Auto-flip turning to face where the character is walking
 # - Procedural walking gait (`motion: "walk"`) with footstep bob & squash
 # - Camera tracking a moving walking actor in real-time
+# - 100% continuous multi-actor staging (zero teleportation, zero camera snap)
 
 title: "DIMsum Cat's Dramatic Pacing"
 description: >
@@ -43,24 +44,36 @@ beats:
         color: "#ea580c"
       - text: "폐하께 들키면 안 되는데!"
         color: "#2a2a2a"
-    animation: "nervous_sweat"
-    pos: [0.15, 0.69]
-    move_to: [0.50, 0.69]
-    move_speed: 1.0
-    move_ease: "smooth"
-    auto_tilt: true
-    auto_flip: true
-    motion: "walk"
     text_size: "big"
     camera:
       type: "tracking"
       target: "dimsum_cat"
-      zoom: 1.10
+      zoom: 1.12
     vfx:
       - type: "sweat_drops"
+    actors:
+      - character: "taeho"
+        animation: "neutral_regal"
+        pos: [0.28, 0.68]
+        scale: 1.25
+        flip_x: false
+        motion: "breathe"
+        ground_shadow: true
+        z_index: 0
+      - character: "dimsum_cat"
+        animation: "nervous_sweat"
+        pos: [0.12, 0.69]
+        move_to: [0.50, 0.69]
+        scale: 1.15
+        move_speed: 1.0
+        auto_tilt: true
+        auto_flip: true
+        motion: "walk"
+        ground_shadow: true
+        z_index: 1
 
   # Beat 2: Dramatic Dracin Pacing — Pacing back and forth across waypoints!
-  # Path: center (50) -> right (75) -> left (25) -> center (50)
+  # Path: center (50) -> right (72) -> left (38) -> center (50)
   - time: 3.00
     text: "왼쪽으로 갈까? 아니, 오른쪽으로 갈까?!"
     sub: "Should I go left? Or maybe right?!"
@@ -69,22 +82,35 @@ beats:
         color: "#0284c7"
       - text: "아니, 오른쪽으로 갈까?!"
         color: "#e11d48"
-    animation: "confused_thinking"
-    pos: [0.50, 0.69]
-    path: [[0.50, 0.69], [0.75, 0.69], [0.25, 0.69], [0.50, 0.69]]
-    move_speed: 1.0
-    move_ease: "smooth"
-    auto_tilt: 1.2
-    auto_flip: true
-    motion: "walk"
     text_size: "big"
     camera:
       type: "slow_zoom_in"
-      zoom: 1.15
+      target: "dimsum_cat"
+      zoom: 1.18
       speed: 0.7
     vfx:
       - type: "question_marks"
         intensity: 1.2
+    actors:
+      - character: "taeho"
+        animation: "neutral_regal"
+        pos: [0.28, 0.68]
+        scale: 1.25
+        flip_x: false
+        motion: "breathe"
+        ground_shadow: true
+        z_index: 0
+      - character: "dimsum_cat"
+        animation: "confused_thinking"
+        pos: [0.50, 0.69]
+        path: [[0.50, 0.69], [0.72, 0.69], [0.38, 0.69], [0.50, 0.69]]
+        scale: 1.15
+        move_speed: 1.0
+        auto_tilt: 1.2
+        auto_flip: true
+        motion: "walk"
+        ground_shadow: true
+        z_index: 1
 
   # Beat 3: Resolution — King Tae-ho watches as DIMsum Cat approaches with finger heart
   - time: 6.00
@@ -98,15 +124,16 @@ beats:
     text_size: "big"
     camera:
       type: "dutch_tilt"
+      target: "dimsum_cat"
       roll: -2.5
-      zoom: 1.08
+      zoom: 1.18
       speed: 0.8
     vfx:
       - type: "floating_hearts"
         intensity: 1.5
     actors:
       - character: "taeho"
-        animation: "neutral_regal"
+        animation: "more_please"
         pos: [0.28, 0.68]
         scale: 1.25
         flip_x: false
@@ -115,12 +142,13 @@ beats:
         z_index: 0
       - character: "dimsum_cat"
         animation: "finger_heart"
-        pos: [0.78, 0.69]
-        move_to: [0.62, 0.69]
-        move_speed: 1.0
-        auto_tilt: true
-        auto_flip: true
-        motion: "walk"
+        pos: [0.50, 0.69]
+        move_to: [0.60, 0.69]
         scale: 1.15
+        move_speed: 0.8
+        auto_tilt: true
+        auto_flip: false
+        flip_x: true
+        motion: "walk"
         ground_shadow: true
         z_index: 1

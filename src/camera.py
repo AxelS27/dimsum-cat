@@ -141,33 +141,42 @@ def compute_camera(
         prev_shake_x = 0.0
         prev_shake_y = 0.0
 
-    # 1. Rock-solid Static Camera (Smoothly settles in from previous pose if needed)
-    if cam_type in ("static", "none", "steady"):
-        settle_dur = (cfg.duration or 0.45) / eff_speed
-        has_drift = (
-            abs(start_cx - 0.5) > 0.005 or
-            abs(start_cy - 0.5) > 0.005 or
-            abs(start_zoom - 1.0) > 0.005 or
-            abs(start_roll - cfg.roll) > 0.1 or
-            abs(prev_shake_x) > 0.5 or
-            abs(prev_shake_y) > 0.5
-        )
-        if cam_start is not None and has_drift and age < settle_dur:
+    has_explicit_zoom = getattr(cfg, "explicit_zoom", False) or (isinstance(camera_input, dict) and "zoom" in camera_input)
+    has_explicit_target = getattr(cfg, "explicit_target", False) or bool(cfg.target)
+
+    # 1. Rock-solid Static Camera or Hold (Smoothly holds framing from previous beat)
+    if cam_type in ("hold", "keep"):
+        state = CameraState(zoom=start_zoom, center_x=start_cx, center_y=start_cy, roll_deg=start_roll)
+
+    elif cam_type in ("static", "none", "steady"):
+        if cam_start is None:
+            target_zoom = cfg.zoom if has_explicit_zoom else 1.0
+            target_pos = resolve_target_pos(cfg.target, actor_positions) or (0.5, 0.5)
+            state = CameraState(zoom=target_zoom, center_x=target_pos[0], center_y=target_pos[1], roll_deg=cfg.roll)
+        elif not has_explicit_zoom and not has_explicit_target:
+            # User wants static framing: HOLD previous beat's zoom and center without snapping!
+            decay = max(0.0, 1.0 - age / 0.30)
+            state = CameraState(
+                zoom     = start_zoom,
+                center_x = start_cx,
+                center_y = start_cy,
+                roll_deg = lerp(start_roll, cfg.roll, min(1.0, age / 0.40)),
+                shake_x  = prev_shake_x * decay,
+                shake_y  = prev_shake_y * decay,
+            )
+        else:
+            # Explicit target or zoom change
+            settle_dur = (cfg.duration if cfg.duration is not None else max(0.6, beat_dur)) / eff_speed
+            target_zoom = cfg.zoom if has_explicit_zoom else start_zoom
+            target_pos = resolve_target_pos(cfg.target, actor_positions) or (start_cx, start_cy)
             prog = ease_func(min(1.0, age / settle_dur))
             state = CameraState(
-                zoom     = lerp(start_zoom, 1.0, prog),
-                center_x = lerp(start_cx, 0.5, prog),
-                center_y = lerp(start_cy, 0.5, prog),
+                zoom     = lerp(start_zoom, target_zoom, prog),
+                center_x = lerp(start_cx, target_pos[0], prog),
+                center_y = lerp(start_cy, target_pos[1], prog),
                 roll_deg = lerp(start_roll, cfg.roll, prog),
                 shake_x  = prev_shake_x * (1.0 - prog),
                 shake_y  = prev_shake_y * (1.0 - prog),
-            )
-        else:
-            state = CameraState(
-                zoom     = 1.0,
-                center_x = 0.5,
-                center_y = 0.5,
-                roll_deg = cfg.roll,
             )
 
     # 2. Crash Zoom (Snap-zooms directly from start position to target)
@@ -209,8 +218,8 @@ def compute_camera(
     # 4. Cinematic Slow Zoom In (Glides smoothly from previous camera state)
     elif cam_type in ("slow_zoom_in", "zoom_in", "push_in"):
         prog = ease_func(min(1.0, age / dur))
-        target_pos = resolve_target_pos(cfg.target, actor_positions) or (0.5, 0.5)
-        target_zoom = cfg.zoom if cfg.zoom != 1.0 else (1.0 + 0.08 * eff_intensity)
+        target_pos = resolve_target_pos(cfg.target, actor_positions) or (start_cx, start_cy)
+        target_zoom = cfg.zoom if has_explicit_zoom else (start_zoom + 0.10 * eff_intensity)
         zoom = lerp(start_zoom, target_zoom, prog)
         cx = lerp(start_cx, target_pos[0], prog)
         cy = lerp(start_cy, max(0.25, target_pos[1] - 0.04), prog)
@@ -218,23 +227,29 @@ def compute_camera(
         state = CameraState(zoom=zoom, center_x=cx, center_y=cy, roll_deg=roll)
 
     # 5. Cinematic Slow Zoom Out (Pull back towards wide shot)
-    elif cam_type in ("slow_zoom_out", "zoom_out", "pull_back"):
+    elif cam_type in ("slow_zoom_out", "zoom_out", "pull_back", "wide", "reset"):
         prog = ease_func(min(1.0, age / dur))
         target_pos = resolve_target_pos(cfg.target, actor_positions) or (0.5, 0.5)
-        zoom = lerp(start_zoom, 1.0, prog)
+        target_zoom = cfg.zoom if has_explicit_zoom else 1.0
+        zoom = lerp(start_zoom, target_zoom, prog)
         cx = lerp(start_cx, target_pos[0], prog)
         cy = lerp(start_cy, target_pos[1], prog)
         roll = lerp(start_roll, cfg.roll, prog)
         state = CameraState(zoom=zoom, center_x=cx, center_y=cy, roll_deg=roll)
 
-    # 6. Tracking Shot (Dolly follow from A to B)
+    # 6. Tracking Shot (Dolly follow target or from A to B)
     elif cam_type in ("tracking", "dolly", "follow"):
         prog = ease_func(min(1.0, age / dur))
-        p_from = resolve_target_pos(cfg.pan_from, actor_positions) or (start_cx, start_cy)
-        p_to = resolve_target_pos(cfg.pan_to, actor_positions) or (0.65, 0.55)
-        cx = lerp(p_from[0], p_to[0], prog)
-        cy = lerp(p_from[1], p_to[1], prog)
-        target_zoom = cfg.zoom if cfg.zoom != 1.0 else 1.10
+        if cfg.target and actor_positions and str(cfg.target) in actor_positions:
+            t_pos = actor_positions[str(cfg.target)]
+            cx = lerp(start_cx, t_pos[0], prog)
+            cy = lerp(start_cy, max(0.25, t_pos[1] - 0.04), prog)
+        else:
+            p_from = resolve_target_pos(cfg.pan_from, actor_positions) or (start_cx, start_cy)
+            p_to = resolve_target_pos(cfg.pan_to, actor_positions) or (0.65, 0.55)
+            cx = lerp(p_from[0], p_to[0], prog)
+            cy = lerp(p_from[1], p_to[1], prog)
+        target_zoom = cfg.zoom if has_explicit_zoom else max(1.10, start_zoom)
         zoom = lerp(start_zoom, target_zoom, min(1.0, prog * 2.0))
         roll = lerp(start_roll, cfg.roll, prog)
         state = CameraState(zoom=zoom, center_x=cx, center_y=cy, roll_deg=roll)
@@ -253,11 +268,11 @@ def compute_camera(
 
     # 8. Dutch Tilt (Dramatic angled camera with smooth tilt-in)
     elif cam_type in ("dutch_tilt", "dutch", "tilt"):
-        settle_dur = (cfg.duration or 0.45) / eff_speed
+        settle_dur = (cfg.duration if cfg.duration is not None else max(0.6, beat_dur)) / eff_speed
         prog = ease_func(min(1.0, age / settle_dur))
-        target_pos = resolve_target_pos(cfg.target, actor_positions) or (0.5, 0.5)
+        target_pos = resolve_target_pos(cfg.target, actor_positions) or (start_cx, start_cy)
         target_roll = cfg.roll if cfg.roll != 0.0 else (-4.5 * eff_intensity)
-        target_zoom = cfg.zoom if cfg.zoom != 1.0 else 1.05
+        target_zoom = cfg.zoom if has_explicit_zoom else start_zoom
         roll = lerp(start_roll, target_roll, prog)
         zoom = lerp(start_zoom, target_zoom, prog)
         cx = lerp(start_cx, target_pos[0], prog)

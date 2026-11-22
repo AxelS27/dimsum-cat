@@ -115,6 +115,8 @@ class CameraConfig:
     reactive_actor: str = ""                  # character name to sync camera motion/shake with
     reactive_factor: float = 0.5              # coupling strength (0.0 to 1.0)
     duration: float | None = None             # movement duration in seconds (None = beat_dur / speed)
+    explicit_zoom: bool = False               # whether user explicitly set zoom
+    explicit_target: bool = False             # whether user explicitly set target
 
 
 @dataclass
@@ -177,11 +179,13 @@ class StoryBeat:
                 reactive_actor  = str(self.camera.get("reactive_actor", "")),
                 reactive_factor = float(self.camera.get("reactive_factor", 0.5)),
                 duration        = float(self.camera["duration"]) if "duration" in self.camera else None,
+                explicit_zoom   = "zoom" in self.camera,
+                explicit_target = "target" in self.camera,
             )
         if isinstance(self.camera, str):
             c_str = self.camera.strip() or "static"
-            return CameraConfig(type=c_str, intensity=self.camera_intensity)
-        return CameraConfig(type="static", intensity=self.camera_intensity)
+            return CameraConfig(type=c_str, intensity=self.camera_intensity, explicit_zoom=False, explicit_target=False)
+        return CameraConfig(type="static", intensity=self.camera_intensity, explicit_zoom=False, explicit_target=False)
 
     def get_actors(self, default_character: str, default_animation: str) -> list[ActorConfig]:
         """Return list of active actors, resolving single-character beat fallback."""
