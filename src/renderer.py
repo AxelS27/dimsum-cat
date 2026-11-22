@@ -367,11 +367,32 @@ def iter_video_frames(
         return idx, beats[idx]
 
     ENTRANCE_DUR = 0.35
+    last_cam_state: CameraState | None = None
+    last_beat_idx: int = -1
+    beat_cam_start: CameraState | None = None
 
     for idx in range(frame_start, frame_end):
         t = idx / config.fps
         beat_idx, beat = beat_at(t)
         age = t - beat.time
+
+        # Track camera continuity across beats in the same scene
+        if beat_idx != last_beat_idx:
+            if last_beat_idx >= 0 and last_cam_state is not None:
+                prev_b = beats[last_beat_idx]
+                prev_bg = prev_b.bg_image or config.bg_image
+                curr_bg = beat.bg_image or config.bg_image
+
+                # Hard cut if background changed or hard transition used
+                is_scene_cut = (
+                    prev_bg != curr_bg
+                    or beat.transition in ("dip_black", "fade_black", "circle_wipe", "iris", "cut")
+                    or getattr(beat.get_camera_config(), "type", "") == "cut"
+                )
+                beat_cam_start = None if is_scene_cut else last_cam_state
+            else:
+                beat_cam_start = None
+            last_beat_idx = beat_idx
 
         # ----------------------------------------------------------------
         # Multi-Actor Staging & Motion Pre-Evaluation
@@ -407,7 +428,9 @@ def iter_video_frames(
             intensity=cam_cfg.intensity,
             actor_positions=actor_positions,
             actor_motions=actor_motions,
+            cam_start=beat_cam_start,
         )
+        last_cam_state = cam
 
         # ----------------------------------------------------------------
         # Compose Background with Virtual Camera
@@ -420,8 +443,8 @@ def iter_video_frames(
             shake_x=cam.shake_x, shake_y=cam.shake_y,
         )
 
-        # Scene Transitions (Flash bloom, crossfade, circle wipe, dip_black)
-        trans_type = getattr(beat, "transition", "") or ("flash" if beat_idx > 0 else "none")
+        # Scene Transitions: Default is "none"! Never flash white randomly!
+        trans_type = getattr(beat, "transition", "") or "none"
         trans_dur = getattr(beat, "transition_dur", 0.22)
         if trans_type != "none" and age < trans_dur:
             canvas = apply_transition(canvas, None, trans_type, age, duration=trans_dur)

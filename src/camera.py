@@ -2,11 +2,12 @@
 camera.py — Virtual Cinematic Director Camera & Scene Transitions for DIMsum Cat.
 
 Provides:
+- Inter-Beat Smooth Camera Blending: Eliminates teleportation across beats within the same scene.
 - Focus Target Locking: Camera tracks or zooms onto specific actors or coordinates.
 - Tracking & Panning Shots: Dolly/follow shots tracking characters as they move.
 - Reactive Character Sync: Camera shakes/bobs in lockstep with character motions.
 - Cinematic Moves: crash_zoom, zoom_punch, slow_zoom_in, slow_zoom_out, whip_pan, dutch_tilt, sway, rumble.
-- Static Camera: Rock-solid stationary camera for clean, stable scenes.
+- Static Camera: Rock-solid stationary camera for clean, stable scenes with smooth settle-in.
 - Scene Transitions: crossfade, circle_wipe, dip_black, flash bloom.
 """
 from __future__ import annotations
@@ -65,7 +66,7 @@ def resolve_target_pos(
 
 
 # ---------------------------------------------------------------------------
-# Cinematic Camera Presets
+# Cinematic Camera Computation with Continuous Slerp / Inter-Beat Blending
 # ---------------------------------------------------------------------------
 
 def compute_camera(
@@ -75,8 +76,9 @@ def compute_camera(
     intensity: float = 1.0,
     actor_positions: dict[str, tuple[float, float]] | None = None,
     actor_motions: dict[str, tuple[float, float]] | None = None,
+    cam_start: CameraState | None = None,
 ) -> CameraState:
-    """Compute virtual camera state for the current frame."""
+    """Compute virtual camera state for the current frame with smooth inter-beat continuity."""
     if isinstance(camera_input, CameraConfig):
         cfg = camera_input
     elif isinstance(camera_input, dict):
@@ -103,34 +105,71 @@ def compute_camera(
     eff_intensity = cfg.intensity
     dur = cfg.duration or max(0.1, beat_dur)
 
-    # 1. Rock-solid Static Camera (zero shake, zero drift)
-    if cam_type in ("static", "none", "steady"):
-        state = CameraState(
-            zoom=1.0,
-            center_x=0.5,
-            center_y=0.5,
-            roll_deg=cfg.roll,
-        )
+    # Initial anchor: carry over from end of previous beat (eliminates teleportation)
+    if cam_start is not None:
+        start_cx   = cam_start.center_x
+        start_cy   = cam_start.center_y
+        start_zoom = cam_start.zoom
+        start_roll = cam_start.roll_deg
+        prev_shake_x = cam_start.shake_x
+        prev_shake_y = cam_start.shake_y
+    else:
+        start_cx   = 0.5
+        start_cy   = 0.5
+        start_zoom = 1.0
+        start_roll = 0.0
+        prev_shake_x = 0.0
+        prev_shake_y = 0.0
 
-    # 2. Crash Zoom (Super snappy dramatic anime / meme zoom into face)
+    # 1. Rock-solid Static Camera (Smoothly settles in from previous pose if needed)
+    if cam_type in ("static", "none", "steady"):
+        settle_dur = cfg.duration or 0.45
+        has_drift = (
+            abs(start_cx - 0.5) > 0.005 or
+            abs(start_cy - 0.5) > 0.005 or
+            abs(start_zoom - 1.0) > 0.005 or
+            abs(start_roll - cfg.roll) > 0.1 or
+            abs(prev_shake_x) > 0.5 or
+            abs(prev_shake_y) > 0.5
+        )
+        if cam_start is not None and has_drift and age < settle_dur:
+            prog = ease_out_cubic(age / settle_dur)
+            state = CameraState(
+                zoom     = lerp(start_zoom, 1.0, prog),
+                center_x = lerp(start_cx, 0.5, prog),
+                center_y = lerp(start_cy, 0.5, prog),
+                roll_deg = lerp(start_roll, cfg.roll, prog),
+                shake_x  = prev_shake_x * (1.0 - prog),
+                shake_y  = prev_shake_y * (1.0 - prog),
+            )
+        else:
+            state = CameraState(
+                zoom     = 1.0,
+                center_x = 0.5,
+                center_y = 0.5,
+                roll_deg = cfg.roll,
+            )
+
+    # 2. Crash Zoom (Snap-zooms directly from start position to target)
     elif cam_type in ("crash_zoom", "crash"):
-        zoom_dur = cfg.duration or 0.16
+        zoom_dur = cfg.duration or 0.18
         prog = ease_out_back(min(1.0, age / zoom_dur))
         target_pos = resolve_target_pos(cfg.target, actor_positions) or (0.5, 0.5)
         target_zoom = cfg.zoom if cfg.zoom != 1.0 else (1.35 * eff_intensity)
 
-        zoom = lerp(1.0, target_zoom, prog)
-        cx = lerp(0.5, target_pos[0], prog)
-        cy = lerp(0.5, max(0.25, target_pos[1] - 0.05), prog)
+        zoom = lerp(start_zoom, target_zoom, prog)
+        cx = lerp(start_cx, target_pos[0], prog)
+        cy = lerp(start_cy, max(0.25, target_pos[1] - 0.05), prog)
+        roll = lerp(start_roll, cfg.roll, prog)
 
         shake_y = 0.0
         if zoom_dur <= age < zoom_dur + 0.12:
             decay = 1.0 - (age - zoom_dur) / 0.12
             shake_y = math.sin((age - zoom_dur) * 55.0) * 8.0 * decay * eff_intensity
 
-        state = CameraState(zoom=zoom, center_x=cx, center_y=cy, shake_y=shake_y, roll_deg=cfg.roll)
+        state = CameraState(zoom=zoom, center_x=cx, center_y=cy, shake_y=shake_y, roll_deg=roll)
 
-    # 3. Zoom Punch (Elastic beat punch that springs back)
+    # 3. Zoom Punch (Elastic beat punch)
     elif cam_type in ("zoom_punch", "punch"):
         punch_dur = cfg.duration or 0.32
         if age < punch_dur:
@@ -139,57 +178,68 @@ def compute_camera(
             extra_zoom = max(0.0, (1.0 - spring)) * 0.07 * eff_intensity
         else:
             extra_zoom = 0.0
-        target_pos = resolve_target_pos(cfg.target, actor_positions)
-        cx = lerp(0.5, target_pos[0], extra_zoom * 2.5) if target_pos else 0.5
-        cy = lerp(0.5, max(0.25, target_pos[1] - 0.05), extra_zoom * 2.5) if target_pos else 0.5
-        state = CameraState(zoom=1.0 + extra_zoom, center_x=cx, center_y=cy, roll_deg=cfg.roll)
+        target_pos = resolve_target_pos(cfg.target, actor_positions) or (start_cx, start_cy)
+        cx = lerp(start_cx, target_pos[0], min(1.0, extra_zoom * 2.5))
+        cy = lerp(start_cy, max(0.25, target_pos[1] - 0.05), min(1.0, extra_zoom * 2.5))
+        zoom = lerp(start_zoom, 1.0, min(1.0, age / punch_dur)) + extra_zoom
+        roll = lerp(start_roll, cfg.roll, min(1.0, age / punch_dur))
+        state = CameraState(zoom=zoom, center_x=cx, center_y=cy, roll_deg=roll)
 
-    # 4. Cinematic Slow Zoom In (Continuous push-in towards target)
+    # 4. Cinematic Slow Zoom In (Glides smoothly from previous camera state)
     elif cam_type in ("slow_zoom_in", "zoom_in", "push_in"):
         prog = ease_out_cubic(min(1.0, age / dur))
         target_pos = resolve_target_pos(cfg.target, actor_positions) or (0.5, 0.5)
         target_zoom = cfg.zoom if cfg.zoom != 1.0 else (1.0 + 0.08 * eff_intensity)
-        zoom = lerp(1.0, target_zoom, prog)
-        cx = lerp(0.5, target_pos[0], prog * 0.75)
-        cy = lerp(0.5, max(0.25, target_pos[1] - 0.04), prog * 0.75)
-        state = CameraState(zoom=zoom, center_x=cx, center_y=cy, roll_deg=cfg.roll)
+        zoom = lerp(start_zoom, target_zoom, prog)
+        cx = lerp(start_cx, target_pos[0], prog)
+        cy = lerp(start_cy, max(0.25, target_pos[1] - 0.04), prog)
+        roll = lerp(start_roll, cfg.roll, prog)
+        state = CameraState(zoom=zoom, center_x=cx, center_y=cy, roll_deg=roll)
 
-    # 5. Cinematic Slow Zoom Out (Continuous pull-back)
+    # 5. Cinematic Slow Zoom Out (Pull back towards wide shot)
     elif cam_type in ("slow_zoom_out", "zoom_out", "pull_back"):
         prog = ease_out_cubic(min(1.0, age / dur))
-        target_pos = resolve_target_pos(cfg.target, actor_positions) or (0.5, 0.5)
-        start_zoom = cfg.zoom_start or (1.0 + 0.08 * eff_intensity)
         zoom = lerp(start_zoom, 1.0, prog)
-        cx = lerp(target_pos[0], 0.5, prog)
-        cy = lerp(max(0.25, target_pos[1] - 0.04), 0.5, prog)
-        state = CameraState(zoom=zoom, center_x=cx, center_y=cy, roll_deg=cfg.roll)
+        cx = lerp(start_cx, 0.5, prog)
+        cy = lerp(start_cy, 0.5, prog)
+        roll = lerp(start_roll, cfg.roll, prog)
+        state = CameraState(zoom=zoom, center_x=cx, center_y=cy, roll_deg=roll)
 
-    # 6. Tracking Shot (Dolly follow shot from pan_from to pan_to)
+    # 6. Tracking Shot (Dolly follow from A to B)
     elif cam_type in ("tracking", "dolly", "follow"):
         prog = min(1.0, age / dur)
-        p_from = resolve_target_pos(cfg.pan_from, actor_positions) or (0.35, 0.55)
+        p_from = resolve_target_pos(cfg.pan_from, actor_positions) or (start_cx, start_cy)
         p_to = resolve_target_pos(cfg.pan_to, actor_positions) or (0.65, 0.55)
         cx = lerp(p_from[0], p_to[0], prog)
         cy = lerp(p_from[1], p_to[1], prog)
-        zoom = cfg.zoom if cfg.zoom != 1.0 else 1.10
-        state = CameraState(zoom=zoom, center_x=cx, center_y=cy, roll_deg=cfg.roll)
+        target_zoom = cfg.zoom if cfg.zoom != 1.0 else 1.10
+        zoom = lerp(start_zoom, target_zoom, min(1.0, prog * 2.0))
+        roll = lerp(start_roll, cfg.roll, prog)
+        state = CameraState(zoom=zoom, center_x=cx, center_y=cy, roll_deg=roll)
 
-    # 7. Whip Pan (Swift motion-blur camera sweep between characters)
+    # 7. Whip Pan (Swift motion-blur camera sweep)
     elif cam_type in ("whip_pan", "whip"):
         whip_dur = cfg.duration or 0.24
         prog = ease_out_cubic(min(1.0, age / whip_dur))
-        p_from = resolve_target_pos(cfg.pan_from, actor_positions) or (0.30, 0.55)
+        p_from = resolve_target_pos(cfg.pan_from, actor_positions) or (start_cx, start_cy)
         p_to = resolve_target_pos(cfg.pan_to, actor_positions) or (0.70, 0.55)
         cx = lerp(p_from[0], p_to[0], prog)
         cy = lerp(p_from[1], p_to[1], prog)
-        zoom = 1.05 + math.sin(prog * math.pi) * 0.06 * eff_intensity
-        state = CameraState(zoom=zoom, center_x=cx, center_y=cy, roll_deg=cfg.roll)
+        zoom = lerp(start_zoom, 1.05, prog) + math.sin(prog * math.pi) * 0.06 * eff_intensity
+        roll = lerp(start_roll, cfg.roll, prog)
+        state = CameraState(zoom=zoom, center_x=cx, center_y=cy, roll_deg=roll)
 
-    # 8. Dutch Tilt (Dramatic angled camera for tension / shock)
+    # 8. Dutch Tilt (Dramatic angled camera with smooth tilt-in)
     elif cam_type in ("dutch_tilt", "dutch", "tilt"):
-        roll = cfg.roll if cfg.roll != 0.0 else (-5.0 * eff_intensity)
-        zoom = 1.04
-        state = CameraState(zoom=zoom, center_x=0.5, center_y=0.5, roll_deg=roll)
+        settle_dur = cfg.duration or 0.35
+        prog = ease_out_cubic(min(1.0, age / settle_dur))
+        target_roll = cfg.roll if cfg.roll != 0.0 else (-4.5 * eff_intensity)
+        target_zoom = cfg.zoom if cfg.zoom != 1.0 else 1.05
+        roll = lerp(start_roll, target_roll, prog)
+        zoom = lerp(start_zoom, target_zoom, prog)
+        cx = lerp(start_cx, 0.5, prog)
+        cy = lerp(start_cy, 0.5, prog)
+        state = CameraState(zoom=zoom, center_x=cx, center_y=cy, roll_deg=roll)
 
     # 9. Earthquake Rumble (Impact shake)
     elif cam_type in ("rumble", "shake"):
@@ -198,8 +248,10 @@ def compute_camera(
             decay = (1.0 - age / rumble_dur) ** 2
             sx = math.sin(age * 55.0) * 14.0 * decay * eff_intensity
             sy = math.cos(age * 47.0) * 11.0 * decay * eff_intensity
-            zoom = 1.0 + 0.03 * decay * eff_intensity
-            state = CameraState(zoom=zoom, center_x=0.5, center_y=0.5, shake_x=sx, shake_y=sy, roll_deg=cfg.roll)
+            zoom = lerp(start_zoom, 1.03, min(1.0, age * 5.0))
+            cx = lerp(start_cx, 0.5, min(1.0, age / rumble_dur))
+            cy = lerp(start_cy, 0.5, min(1.0, age / rumble_dur))
+            state = CameraState(zoom=zoom, center_x=cx, center_y=cy, shake_x=sx, shake_y=sy, roll_deg=cfg.roll)
         else:
             state = CameraState(zoom=1.0, center_x=0.5, center_y=0.5, roll_deg=cfg.roll)
 
@@ -208,10 +260,12 @@ def compute_camera(
         pan_x = math.sin(age * 1.5) * 0.008 * eff_intensity
         pan_y = math.cos(age * 1.2) * 0.006 * eff_intensity
         roll = math.sin(age * 1.1) * 0.4 * eff_intensity + cfg.roll
-        state = CameraState(zoom=1.02, center_x=0.5 + pan_x, center_y=0.5 + pan_y, roll_deg=roll)
+        cx = lerp(start_cx, 0.5, min(1.0, age * 2.0)) + pan_x
+        cy = lerp(start_cy, 0.5, min(1.0, age * 2.0)) + pan_y
+        zoom = lerp(start_zoom, 1.02, min(1.0, age * 2.0))
+        state = CameraState(zoom=zoom, center_x=cx, center_y=cy, roll_deg=roll)
 
     else:
-        # Default fallback: Static
         state = CameraState(zoom=1.0, center_x=0.5, center_y=0.5, roll_deg=cfg.roll)
 
     # Reactive Character Coupling: Camera shivers/bobs in lockstep with actor

@@ -1,12 +1,14 @@
 # ==============================================================================
-# DIMsum Cat — Cinematic Director Camera Showcase
+# DIMsum Cat — Cinematic Director Camera Showcase (Continuous One-Take)
 # ==============================================================================
 # Starring: DIMsum Cat & King Tae-ho
-# Demonstrates:
-# - Beat 1: "static" (Rock-solid, motionless, calm camera)
-# - Beat 2: "slow_zoom_in" with target: "dimsum_cat" & reactive_actor: "dimsum_cat"
-# - Beat 3: "crash_zoom" snap-zooming directly onto target: "taeho"
-# - Beat 4: "dutch_tilt" subtle cinematic angle & sweet resolution
+# Scene: Royal Dining Hall (100% continuous take, zero flashes, smooth camera flow)
+#
+# Camera choreography:
+# - Beat 1: "static" (Calm, stable, motionless establishing shot)
+# - Beat 2: "slow_zoom_in" smoothly glides onto target: "dimsum_cat" + reactive shiver
+# - Beat 3: "crash_zoom" smoothly sweeps across the table onto target: "taeho"
+# - Beat 4: "dutch_tilt" smoothly settles back to the two-shot with subtle tilt
 
 title: "King Tae-ho's Royal Tasting"
 description: >
@@ -34,7 +36,7 @@ watermark: ""
 pinned_comment: "Did King Tae-ho give it 5 stars? ⭐⭐⭐⭐⭐"
 
 # ==============================================================================
-# Beats Timeline (Cinematic Camera Directed)
+# Beats Timeline (Continuous Camera Flow — Zero Flashes)
 # ==============================================================================
 
 beats:
@@ -49,8 +51,6 @@ beats:
         color: "#2a2a2a"
     text_size: "big"
     camera: "static"
-    transition: "dip_black"
-    transition_dur: 0.30
     vfx:
       - type: "sparkles"
         intensity: 1.0
@@ -74,7 +74,7 @@ beats:
         ground_shadow: true
         z_index: 1
 
-  # Beat 2: Suspense — Slow zoom targeting DIMsum Cat + Camera shivers in sync with her!
+  # Beat 2: Suspense — Smooth push-in focusing on DIMsum Cat + Camera shivers in sync with her
   - time: 3.00
     text: "과연 폐하의 입맛에 맞을까...?"
     sub: "Will it suit the royal palate...?"
@@ -89,7 +89,7 @@ beats:
       target: "dimsum_cat"
       zoom: 1.18
       reactive_actor: "dimsum_cat"
-      reactive_factor: 0.45
+      reactive_factor: 0.40
     vfx:
       - type: "sweat_drops"
     actors:
@@ -111,7 +111,7 @@ beats:
         ground_shadow: true
         z_index: 1
 
-  # Beat 3: CRASH ZOOM Punchline! Snap-zoom onto King Tae-ho's overjoyed face!
+  # Beat 3: CRASH ZOOM! Smoothly sweeps across from DIMsum Cat onto King Tae-ho!
   - time: 6.00
     text: "천상의 맛이다!! 너무 맛있어!"
     sub: "A taste of heaven!! Absolutely delicious!"
@@ -125,9 +125,7 @@ beats:
       type: "crash_zoom"
       target: "taeho"
       zoom: 1.30
-      intensity: 1.1
-    transition: "crossfade"
-    transition_dur: 0.20
+      intensity: 1.0
     vfx:
       - type: "floating_hearts"
         intensity: 1.2
@@ -153,7 +151,7 @@ beats:
         ground_shadow: true
         z_index: 1
 
-  # Beat 4: Sweet Resolution with subtle cinematic Dutch Tilt
+  # Beat 4: Sweet Resolution — Smoothly settles back to wide two-shot with subtle Dutch Tilt
   - time: 9.00
     text: "사랑을 담아 만들었어요~"
     sub: "Crafted with pure royal love~"
@@ -165,7 +163,7 @@ beats:
     text_size: "big"
     camera:
       type: "dutch_tilt"
-      roll: -2.5
+      roll: -2.0
       zoom: 1.05
     vfx:
       - type: "floating_hearts"
