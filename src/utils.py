@@ -54,11 +54,13 @@ def find_ffmpeg() -> str | None:
     return shutil.which("ffmpeg")
 
 
-def resolve_pos(pos: str) -> tuple[float, float]:
-    if pos in POSITIONS:
+def resolve_pos(pos: str | list | tuple) -> tuple[float, float]:
+    if isinstance(pos, (list, tuple)) and len(pos) >= 2:
+        return float(pos[0]), float(pos[1])
+    if isinstance(pos, str) and pos in POSITIONS:
         return POSITIONS[pos]
     try:
-        a, b = pos.split(",")
+        a, b = str(pos).split(",")
         return float(a), float(b)
     except (ValueError, IndexError):
         return POSITIONS["center"]

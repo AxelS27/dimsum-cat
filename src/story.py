@@ -87,14 +87,30 @@ def _load_rich_text(raw: object) -> list[RichTextSpan]:
     return spans
 
 
-def load_story_json(path: Path, args: argparse.Namespace) -> RenderConfig:
-    # Accept directory path → look for story.json inside
+def load_story_file(path: Path, args: argparse.Namespace) -> RenderConfig:
+    """Load story from either story.yaml, story.yml, or story.json.
+
+    If a directory path is given, prefers story.yaml / story.yml over story.json.
+    """
     if path.is_dir():
-        path = path / "story.json"
+        candidates = [
+            path / "story.yaml",
+            path / "story.yml",
+            path / "story.json",
+        ]
+        found = next((c for c in candidates if c.exists()), None)
+        if not found:
+            raise FileNotFoundError(f"No story.yaml, story.yml, or story.json found in {path}")
+        path = found
     path = path.resolve()
     story_dir = path.parent
 
-    data = json.loads(path.read_text(encoding="utf-8"))
+    raw_text = path.read_text(encoding="utf-8")
+    if path.suffix in (".yaml", ".yml"):
+        import yaml
+        data = yaml.safe_load(raw_text) or {}
+    else:
+        data = json.loads(raw_text) or {}
     raw_beats = data.get("beats", [])
     beats = [
         StoryBeat(
@@ -160,6 +176,10 @@ def load_story_json(path: Path, args: argparse.Namespace) -> RenderConfig:
         silent_beat_dur   = float(data.get("silent_beat_dur", 1.5)),
         save_frames       = getattr(args, "save_frames", False),
     )
+
+
+# Backward-compatible alias
+load_story_json = load_story_file
 
 
 def config_from_args(args: argparse.Namespace) -> RenderConfig:
