@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import math
+from typing import Iterator
 
 from PIL import Image, ImageDraw, ImageFilter
 
@@ -246,11 +247,11 @@ def draw_text_overlay(
     canvas.alpha_composite(layer)
 
 
-def render_video_frames(
+def iter_video_frames(
     config: RenderConfig,
     frame_start: int = 0,
     frame_end: int | None = None,
-) -> list[Image.Image]:
+) -> Iterator[Image.Image]:
     total_frames = max(1, int(config.duration * config.fps))
     frame_end = total_frames if frame_end is None else min(frame_end, total_frames)
     w_scale = config.width / 720
@@ -329,8 +330,6 @@ def render_video_frames(
                 char = beats[i].character or config.default_character
                 return char, beats[i].animation
         return config.default_character, config.default_animation
-
-    rendered: list[Image.Image] = []
 
     for idx in range(frame_start, frame_end):
         t = idx / config.fps
@@ -513,6 +512,13 @@ def render_video_frames(
             wy = config.height - wm_img.height - int(90 * w_scale)
             canvas.alpha_composite(wm_img, (wx, max(0, wy)))
 
-        rendered.append(canvas.convert("RGB"))
+        yield canvas.convert("RGB")
 
-    return rendered
+
+def render_video_frames(
+    config: RenderConfig,
+    frame_start: int = 0,
+    frame_end: int | None = None,
+) -> list[Image.Image]:
+    """Backward-compatible helper returning a full list of frames."""
+    return list(iter_video_frames(config, frame_start=frame_start, frame_end=frame_end))

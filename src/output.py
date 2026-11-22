@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import subprocess
 from pathlib import Path
+from typing import Iterator, Callable
 
 from PIL import Image
 
@@ -11,6 +12,79 @@ from src.utils import find_ffmpeg
 # ---------------------------------------------------------------------------
 # Output
 # ---------------------------------------------------------------------------
+
+def stream_to_mp4(
+    frame_iterator: Iterator[Image.Image],
+    mp4_path: Path,
+    fps: int,
+    width: int,
+    height: int,
+    total_frames: int | None = None,
+    title: str = "",
+    description: str = "",
+    progress_callback: Callable[[int, int], None] | None = None,
+) -> None:
+    """Stream raw RGB video frames directly to FFmpeg stdin (Zero-Disk I/O).
+
+    Encodes with h264_nvenc (NVIDIA GPU) at CQ 18.
+    Eliminates intermediate PNG disk writes entirely.
+    """
+    ffmpeg = find_ffmpeg()
+    if not ffmpeg:
+        raise RuntimeError("ffmpeg not found. Run: pip install imageio-ffmpeg")
+    mp4_path.parent.mkdir(parents=True, exist_ok=True)
+    metadata = []
+    if title:
+        metadata += ["-metadata", f"title={title}"]
+    if description:
+        metadata += ["-metadata", f"comment={description}"]
+
+    cmd = [
+        ffmpeg, "-y",
+        "-f", "rawvideo",
+        "-vcodec", "rawvideo",
+        "-s", f"{width}x{height}",
+        "-pix_fmt", "rgb24",
+        "-r", str(fps),
+        "-i", "pipe:0",
+        "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2",
+        "-c:v", "h264_nvenc",
+        "-cq", "18",
+        "-preset", "p4",
+        "-rc", "vbr",
+        "-pix_fmt", "yuv420p",
+        *metadata,
+        str(mp4_path),
+    ]
+
+    proc = subprocess.Popen(
+        cmd,
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+
+    frame_count = 0
+    try:
+        for frame in frame_iterator:
+            raw_bytes = frame.tobytes("raw", "RGB")
+            proc.stdin.write(raw_bytes)
+            frame_count += 1
+            if progress_callback:
+                progress_callback(frame_count, total_frames or frame_count)
+            elif frame_count % (fps * 2) == 0 or (total_frames and frame_count == total_frames):
+                pct = f" ({int(frame_count / total_frames * 100)}%)" if total_frames else ""
+                print(f"  Streaming frame {frame_count:04d}/{total_frames or '?' :04d}{pct}")
+        proc.stdin.close()
+    except Exception as e:
+        proc.kill()
+        raise RuntimeError(f"Error streaming frames to ffmpeg: {e}") from e
+
+    out, err = proc.communicate()
+    if proc.returncode != 0:
+        err_msg = err.decode("utf-8", errors="replace")
+        raise RuntimeError(f"ffmpeg streaming failed (exit code {proc.returncode}):\n{err_msg}")
+
 
 def save_png_sequence(frames: list[Image.Image], out_dir: Path) -> None:
     out_dir.mkdir(parents=True, exist_ok=True)

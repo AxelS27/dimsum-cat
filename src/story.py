@@ -30,12 +30,13 @@ from src.utils import (
     slugify,
     _recalculate_beat_times,
 )
-from src.renderer import render_video_frames
+from src.renderer import render_video_frames, iter_video_frames
 from src.sprite import load_frames
 from src.tts import build_tts_audio
 from src.output import (
     save_png_sequence,
     save_mp4,
+    stream_to_mp4,
     save_gif,
     mux_audio_into_mp4,
     mix_audio_preview,
@@ -150,6 +151,7 @@ def load_story_json(path: Path, args: argparse.Namespace) -> RenderConfig:
         intro_gap         = float(data.get("intro_gap", 0.8)),
         between_gap       = float(data.get("between_gap", 0.65)),
         silent_beat_dur   = float(data.get("silent_beat_dur", 1.5)),
+        save_frames       = getattr(args, "save_frames", False),
     )
 
 
@@ -181,6 +183,7 @@ def config_from_args(args: argparse.Namespace) -> RenderConfig:
         gpt_sovits_server = args.gpt_sovits_server,
         gpt_sovits_speed  = args.gpt_sovits_speed,
         bg_music          = args.bg_music,
+        save_frames       = getattr(args, "save_frames", False),
     )
 
 
@@ -202,6 +205,7 @@ def config_demo(args: argparse.Namespace) -> RenderConfig:
         gpt_sovits_server = args.gpt_sovits_server,
         gpt_sovits_speed  = args.gpt_sovits_speed,
         bg_music          = args.bg_music,
+        save_frames       = getattr(args, "save_frames", False),
     )
 
 
@@ -246,6 +250,7 @@ Demo (built-in 4-beat story):
     p.add_argument("--bg",       default="#f8f4f0",         help="Background hex color.")
     p.add_argument("--watermark", default="",               help="(unused — watermark.png is used instead)")
     p.add_argument("--gif",       action="store_true",        help="Also export a GIF preview.")
+    p.add_argument("--save-frames", action="store_true", dest="save_frames", help="Save intermediate PNG frames to disk (default: False, streams directly to FFmpeg).")
     p.add_argument("--tts",              action="store_true",                   help="Add TTS voiceover.")
     p.add_argument("--gpt-sovits-ref",    default="",           dest="gpt_sovits_ref",
                                                                help="Reference audio for GPT-SoVITS voice cloning (3-10s).")
@@ -269,7 +274,8 @@ Demo (built-in 4-beat story):
 
 
 def print_result(result: dict) -> None:
-    print(f"  Frames : {result['frames_dir']}")
+    frames_disp = result.get("frames_dir") or "(zero-disk streaming pipe)"
+    print(f"  Frames : {frames_disp}")
     print(f"  MP4    : {result['mp4']}")
     if result.get("gif"):
         print(f"  GIF    : {result['gif']}")
@@ -480,8 +486,22 @@ def render(config: RenderConfig, tts_only: bool = False, audio_only: bool = Fals
         if remix_audio and not mp4_path.exists():
             raise RuntimeError(f"--remix-audio requires an existing video.mp4 at {mp4_path}")
         frames = None
-        _render_png_sequence_chunked(config, frames_dir)
-        save_mp4(frames_dir, mp4_path, config.fps, title=config.title, description=config.description)
+        if config.save_frames:
+            _render_png_sequence_chunked(config, frames_dir)
+            save_mp4(frames_dir, mp4_path, config.fps, title=config.title, description=config.description)
+        else:
+            total_frames = max(1, int(config.duration * config.fps))
+            print(f"  Streaming {total_frames} frames directly to FFmpeg (Zero-Disk I/O)...")
+            stream_to_mp4(
+                iter_video_frames(config),
+                mp4_path,
+                config.fps,
+                config.width,
+                config.height,
+                total_frames=total_frames,
+                title=config.title,
+                description=config.description,
+            )
 
     # ── Phase 3: Mix TTS audio at retimed timestamps + mux ───────────────────
     if config.tts:
@@ -525,7 +545,7 @@ def render(config: RenderConfig, tts_only: bool = False, audio_only: bool = Fals
         save_gif(frames, gif_path, config.fps)
         gif_created = True
 
-    return {"frames_dir": frames_dir, "mp4": mp4_path, "gif": gif_path if gif_created else None}
+    return {"frames_dir": (frames_dir if config.save_frames else None), "mp4": mp4_path, "gif": gif_path if gif_created else None}
 
 
 def main() -> None:

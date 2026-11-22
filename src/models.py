@@ -133,6 +133,7 @@ class RenderConfig:
     tts_pitch:          float = 1.0   # pitch multiplier (0.93 = ~7% lower, 1.07 = ~7% higher)
     bg_image:           str   = ""    # default background image path (overridden per-beat)
     default_character:  str   = "dimsum_cat"  # character used unless overridden per-beat
+    save_frames:        bool  = False   # save intermediate PNG frames to disk (default: stream via pipe)
     intro_gap:          float = 0.8   # first retimed beat offset; set 0.0 for instant hook text
     between_gap:        float = 0.65  # retimed gap after each spoken beat
     silent_beat_dur:    float = 1.5   # retimed duration for silent/punctuation beats
