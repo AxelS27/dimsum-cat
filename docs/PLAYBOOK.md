@@ -52,7 +52,7 @@ Default character is `dimsum_cat` unless overridden at the root level with `"cha
 
 ### Universal Character & Language Rules
 - Visual `text` is always **English** (prominent, punchy, expressive English dialogue or caption).
-- `sub` is always **English** (secondary line, reaction, or contextual subtext).
+- `sub` is **strictly optional**: Only use when there is a genuine secondary whisper, internal monologue, or stage direction (e.g. `*(internal panic)*` or `(whispering)`). **Do NOT add `sub` to every beat** — double subtitles cause viewer fatigue. If the main line is clear, omit `sub` completely!
 - **NO Korean Hangul visually on screen** in `text`, `sub`, or `rich_text`.
 - **TTS Korean voiceover (when `tts: true`)**: Put Korean hangul text into `tts_text` per beat. GPT-SoVITS will speak the Korean line from `tts_text`, while the screen stays 100% English.
   - If `tts_text` is omitted, TTS falls back to `text`.

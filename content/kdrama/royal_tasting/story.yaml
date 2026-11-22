@@ -43,7 +43,6 @@ beats:
   # Beat 1: Establishing Shot — Completely STATIC Camera (rock solid & calm)
   - time: 0.00
     text: "Your Majesty, today's royal special!"
-    sub: "Crafted especially for the royal feast!"
     rich_text:
       - text: "Your Majesty, "
         color: "#d97706"
@@ -78,7 +77,6 @@ beats:
   # Beat 2: Suspense — Smooth push-in focusing on DIMsum Cat + Camera shivers in sync with her
   - time: 3.00
     text: "Will it suit the royal palate...?"
-    sub: "The tension in the dining hall rises!"
     rich_text:
       - text: "Will it suit the "
         color: "#2a2a2a"
@@ -118,7 +116,6 @@ beats:
   # Beat 3: CRASH ZOOM! Smoothly sweeps across from DIMsum Cat onto King Tae-ho!
   - time: 6.00
     text: "A taste of heaven!! Absolutely delicious!"
-    sub: "The King's highest royal praise!"
     rich_text:
       - text: "A taste of heaven!! "
         color: "#ea580c"
@@ -159,7 +156,6 @@ beats:
   # Beat 4: Sweet Resolution — Smoothly settles back to wide two-shot with subtle Dutch Tilt
   - time: 9.00
     text: "Crafted with pure royal love~"
-    sub: "A feast fit for an Emperor!"
     rich_text:
       - text: "Crafted with pure "
         color: "#ec4899"

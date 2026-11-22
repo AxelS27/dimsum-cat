@@ -38,7 +38,6 @@ beats:
   # Beat 1: Entrance Walk — DIMsum Cat enters walking from stage left to center
   - time: 0.00
     text: "Oh no... What if His Majesty finds out?!"
-    sub: "I must keep this secret safe!"
     rich_text:
       - text: "Oh no... "
         color: "#ea580c"
@@ -77,7 +76,6 @@ beats:
   # Path: center (50) -> right (72) -> left (38) -> center (50)
   - time: 3.00
     text: "Should I go left? Or maybe right?!"
-    sub: "Pacing back and forth in panic!"
     rich_text:
       - text: "Should I go left? "
         color: "#0284c7"
@@ -117,7 +115,6 @@ beats:
   # Beat 3: Resolution — King Tae-ho watches as DIMsum Cat approaches with finger heart
   - time: 6.00
     text: "Your Majesty! Actually... it's a surprise gift~"
-    sub: "A royal treat made just for you!"
     rich_text:
       - text: "Your Majesty! "
         color: "#d97706"
