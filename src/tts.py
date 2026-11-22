@@ -167,7 +167,7 @@ def build_tts_audio(
     tmp_dir.mkdir(parents=True, exist_ok=True)
 
     # Collect indices + beats that need speech
-    speak_beats = [(i, b) for i, b in enumerate(beats) if _should_speak(b.text)]
+    speak_beats = [(i, b) for i, b in enumerate(beats) if _should_speak(getattr(b, "tts_text", "") or b.text)]
     if not speak_beats:
         print("  TTS skipped: no speakable beats")
         if not pregenerated_dir:
@@ -183,7 +183,8 @@ def build_tts_audio(
             return False
         try:
             for i, b in speak_beats:
-                tts_text = b.text.replace("~", "").strip()
+                raw_tts = getattr(b, "tts_text", "") or b.text
+                tts_text = raw_tts.replace("~", "").strip()
                 print(f"    GPT-SoVITS: {tts_text}")
                 temp = b.tts_temperature if b.tts_temperature is not None else gpt_sovits_temperature
                 sp = b.tts_speed if b.tts_speed is not None else speed

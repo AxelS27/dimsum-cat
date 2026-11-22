@@ -50,15 +50,13 @@ Per beat, set `"character": "<folder_name>"` to switch the active character:
 ```
 Default character is `dimsum_cat` unless overridden at the root level with `"character": "taeho"`.
 
-### Universal Character Rules
-- Main `text` is always **Korean hangul**
-- `sub` is always **English**
-- **Never use emoji in `text`** (Jua font doesn't support it)
-- Emoji OK in `sub` and `description`
-- **Never mix Latin alphabet into `text`** — GPT-SoVITS can't pronounce it naturally in Korean TTS
-  - Brand names and foreign words must be written phonetically in hangul
-  - e.g. `"DIMsum Cat"` → `"딤섬 캣"`, `"POV"` → `"피오브이"`, `"K-pop"` → `"케이팝"`
-  - Use `rich_text` to display the Latin brand name visually while TTS gets the hangul version
+### Universal Character & Language Rules
+- Visual `text` is always **English** (prominent, punchy, expressive English dialogue or caption).
+- `sub` is always **English** (secondary line, reaction, or contextual subtext).
+- **NO Korean Hangul visually on screen** in `text`, `sub`, or `rich_text`.
+- **TTS Korean voiceover (when `tts: true`)**: Put Korean hangul text into `tts_text` per beat. GPT-SoVITS will speak the Korean line from `tts_text`, while the screen stays 100% English.
+  - If `tts_text` is omitted, TTS falls back to `text`.
+- **Never use emoji in `text`** (fonts don't support color emoji glyphs). Emoji is OK in `description` and `pinned_comment`.
 
 ### Animations — ALWAYS Check the Folder
 

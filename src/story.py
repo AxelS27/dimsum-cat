@@ -167,12 +167,15 @@ def load_story_file(path: Path, args: argparse.Namespace) -> RenderConfig:
             time            = b["time"],
             text            = b.get("text", ""),
             sub             = b.get("sub", ""),
+            tts_text        = str(b.get("tts_text", "")),
             animation       = b.get("animation", ""),
             pos             = b.get("pos", "center"),
             scale           = float(b.get("scale", 1.0)),
             text_size       = b.get("text_size", "normal"),
             tts_speed       = float(b["tts_speed"])       if b.get("tts_speed")       is not None else None,
             tts_temperature = float(b["tts_temperature"]) if b.get("tts_temperature") is not None else None,
+            tts_delay       = float(b.get("tts_delay", 0.0)),
+            after_gap       = float(b["after_gap"]) if "after_gap" in b else None,
             rich_text       = _load_rich_text(b.get("rich_text")),
             rich_text_sub   = _load_rich_text(b.get("rich_text_sub")),
             bg_image        = b.get("bg_image", ""),
@@ -439,8 +442,9 @@ def render(config: RenderConfig, tts_only: bool = False, audio_only: bool = Fals
         tmp_dir.mkdir(exist_ok=True)
         beat = config.beats[regen_beat]
         from src.tts import _gpt_sovits_clip, _should_speak
-        if _should_speak(beat.text):
-            tts_text = beat.text.replace("~", "").strip()
+        raw_tts = (getattr(beat, "tts_text", "") or beat.text).replace("~", "").strip()
+        if _should_speak(raw_tts):
+            tts_text = raw_tts
             print(f"  Regenerating beat {regen_beat}: {tts_text}")
             wav = tmp_dir / f"beat_{regen_beat:02d}.wav"
             _gpt_sovits_clip(

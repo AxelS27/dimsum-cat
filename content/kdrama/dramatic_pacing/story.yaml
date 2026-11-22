@@ -37,13 +37,14 @@ pinned_comment: "Why is DIMsum Cat pacing so dramatically? 🐱💭"
 beats:
   # Beat 1: Entrance Walk — DIMsum Cat enters walking from stage left to center
   - time: 0.00
-    text: "어떡하지... 폐하께 들키면 안 되는데!"
-    sub: "What should I do... The King must not find out!"
+    text: "Oh no... What if His Majesty finds out?!"
+    sub: "I must keep this secret safe!"
     rich_text:
-      - text: "어떡하지... "
+      - text: "Oh no... "
         color: "#ea580c"
-      - text: "폐하께 들키면 안 되는데!"
+      - text: "What if His Majesty finds out?!"
         color: "#2a2a2a"
+    tts_text: "어떡하지... 폐하께 들키면 안 되는데!"
     text_size: "big"
     camera:
       type: "tracking"
@@ -75,13 +76,14 @@ beats:
   # Beat 2: Dramatic Dracin Pacing — Pacing back and forth across waypoints!
   # Path: center (50) -> right (72) -> left (38) -> center (50)
   - time: 3.00
-    text: "왼쪽으로 갈까? 아니, 오른쪽으로 갈까?!"
-    sub: "Should I go left? Or maybe right?!"
+    text: "Should I go left? Or maybe right?!"
+    sub: "Pacing back and forth in panic!"
     rich_text:
-      - text: "왼쪽으로 갈까? "
+      - text: "Should I go left? "
         color: "#0284c7"
-      - text: "아니, 오른쪽으로 갈까?!"
+      - text: "Or maybe right?!"
         color: "#e11d48"
+    tts_text: "왼쪽으로 갈까? 아니, 오른쪽으로 갈까?!"
     text_size: "big"
     camera:
       type: "slow_zoom_in"
@@ -114,13 +116,14 @@ beats:
 
   # Beat 3: Resolution — King Tae-ho watches as DIMsum Cat approaches with finger heart
   - time: 6.00
-    text: "폐하! 사실... 깜짝 선물이에요~"
-    sub: "Your Majesty! Actually... it's a surprise gift~"
+    text: "Your Majesty! Actually... it's a surprise gift~"
+    sub: "A royal treat made just for you!"
     rich_text:
-      - text: "폐하! "
+      - text: "Your Majesty! "
         color: "#d97706"
-      - text: "사실... 깜짝 선물이에요~"
+      - text: "Actually... it's a surprise gift~"
         color: "#ec4899"
+    tts_text: "폐하! 사실... 깜짝 선물이에요~"
     text_size: "big"
     camera:
       type: "dutch_tilt"

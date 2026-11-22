@@ -123,8 +123,9 @@ class CameraConfig:
 class StoryBeat:
     """One moment in the video story."""
     time: float            # seconds from start
-    text: str              # main text (large, prominent)
-    sub: str = ""          # secondary line — pinyin, translation, reaction
+    text: str              # main text (large, prominent English title/dialogue)
+    sub: str = ""          # secondary line (English subtext/translation/reaction)
+    tts_text: str = ""     # spoken speech text (e.g. Korean hangul for TTS if text is in English)
     animation: str = ""    # switch to this animation (empty = keep previous)
     pos: str | list | tuple = "center"    # named position or "cx,cy" or [cx, cy]
     scale: float = 1.0     # character scale multiplier

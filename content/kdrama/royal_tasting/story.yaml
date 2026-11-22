@@ -42,13 +42,14 @@ pinned_comment: "Did King Tae-ho give it 5 stars? ⭐⭐⭐⭐⭐"
 beats:
   # Beat 1: Establishing Shot — Completely STATIC Camera (rock solid & calm)
   - time: 0.00
-    text: "폐하, 오늘의 특선 요리입니다!"
-    sub: "Your Majesty, today's royal special!"
+    text: "Your Majesty, today's royal special!"
+    sub: "Crafted especially for the royal feast!"
     rich_text:
-      - text: "폐하, "
+      - text: "Your Majesty, "
         color: "#d97706"
-      - text: "오늘의 특선 요리입니다!"
+      - text: "today's royal special!"
         color: "#2a2a2a"
+    tts_text: "폐하, 오늘의 특선 요리입니다!"
     text_size: "big"
     camera: "static"
     vfx:
@@ -76,13 +77,14 @@ beats:
 
   # Beat 2: Suspense — Smooth push-in focusing on DIMsum Cat + Camera shivers in sync with her
   - time: 3.00
-    text: "과연 폐하의 입맛에 맞을까...?"
-    sub: "Will it suit the royal palate...?"
+    text: "Will it suit the royal palate...?"
+    sub: "The tension in the dining hall rises!"
     rich_text:
-      - text: "과연 폐하의 "
+      - text: "Will it suit the "
         color: "#2a2a2a"
-      - text: "입맛에 맞을까...?"
+      - text: "royal palate...?"
         color: "#0284c7"
+    tts_text: "과연 폐하의 입맛에 맞을까...?"
     text_size: "big"
     camera:
       type: "slow_zoom_in"
@@ -115,13 +117,14 @@ beats:
 
   # Beat 3: CRASH ZOOM! Smoothly sweeps across from DIMsum Cat onto King Tae-ho!
   - time: 6.00
-    text: "천상의 맛이다!! 너무 맛있어!"
-    sub: "A taste of heaven!! Absolutely delicious!"
+    text: "A taste of heaven!! Absolutely delicious!"
+    sub: "The King's highest royal praise!"
     rich_text:
-      - text: "천상의 맛이다!! "
+      - text: "A taste of heaven!! "
         color: "#ea580c"
-      - text: "너무 맛있어!"
+      - text: "Absolutely delicious!"
         color: "#dc2626"
+    tts_text: "천상의 맛이다!! 너무 맛있어!"
     text_size: "huge"
     camera:
       type: "crash_zoom"
@@ -155,13 +158,14 @@ beats:
 
   # Beat 4: Sweet Resolution — Smoothly settles back to wide two-shot with subtle Dutch Tilt
   - time: 9.00
-    text: "사랑을 담아 만들었어요~"
-    sub: "Crafted with pure royal love~"
+    text: "Crafted with pure royal love~"
+    sub: "A feast fit for an Emperor!"
     rich_text:
-      - text: "사랑을 담아 "
+      - text: "Crafted with pure "
         color: "#ec4899"
-      - text: "만들었어요~"
+      - text: "royal love~"
         color: "#f43f5e"
+    tts_text: "사랑을 담아 만들었어요~"
     text_size: "big"
     camera:
       type: "dutch_tilt"
