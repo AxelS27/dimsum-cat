@@ -26,6 +26,7 @@ from src.utils import (
     strip_emoji,
 )
 from src.sprite import organic, make_sprite_schedule, load_frames
+from src.motion import resolve_motion_name, compute_motion
 
 
 # ---------------------------------------------------------------------------
@@ -359,46 +360,23 @@ def iter_video_frames(
             char_cx, char_cy, char_scale = target_cx, target_cy, target_scale
 
         # ----------------------------------------------------------------
-        # Distinct Motion Per Character: custom bobbing, tilt & physics
+        # Modular Motion Physics & Behavior Presets
         # ----------------------------------------------------------------
-        if anim_name == "alligator":
-            # Alligator: calm, buoyant swamp-water float with gentle side-to-side drift
-            bob_px = math.sin(age * 2.8) * 16.0 * w_scale
-            rot_deg = math.sin(age * 1.6) * 4.5
-            sq_amount = math.sin(age * 2.8) * 0.025
-            breath = organic(t, freq=0.30, phase=0.0) * 0.020
-        elif anim_name == "crocodile":
-            # Crocodile: heavy, energetic, chunky belly-laugh bounce!
-            laugh_hop = abs(math.sin(age * 5.2)) * -26.0 * w_scale
-            bob_px = laugh_hop + 10.0 * w_scale
-            rot_deg = math.sin(age * 3.6) * 8.5
-            sq_amount = math.sin(age * 5.2) * 0.060
-            breath = organic(t, freq=0.40, phase=1.0) * 0.020
-        elif anim_name == "ladybug":
-            # Ladybug: tiny, eager, rapid excited hops on the leaf with big head tilts
-            hop_cycle = math.sin(age * 6.5)
-            bob_px = (hop_cycle * 14.0 + (abs(hop_cycle) - 0.5) * -12.0) * w_scale
-            rot_deg = math.sin(age * 4.8) * 9.5
-            sq_amount = hop_cycle * 0.045
-            breath = organic(t, freq=0.50, phase=2.0) * 0.030
-        elif anim_name == "jellyfish":
-            # Jellyfish: fluid underwater swimming pulse thrusting up and drifting down
-            pulse = (math.sin(age * 2.0) ** 2) * 36.0 * w_scale
-            bob_px = -pulse + 14.0 * w_scale
-            rot_deg = math.sin(age * 1.3) * 6.0
-            sq_amount = -math.sin(age * 2.0) * 0.080
-            breath = organic(t, freq=0.25, phase=3.0) * 0.025
-        else:
-            # Fallback for standard characters
-            bounce_cycle = math.sin(t * math.pi * 3.8)
-            bob_px = (bounce_cycle * 14.0 + organic(t, freq=0.90, phase=0.00) * 8.0) * w_scale
-            rot_deg = math.sin(t * math.pi * 1.9 + 0.5) * 4.5 + organic(t, freq=0.55, phase=1.80) * 2.2
-            sq_amount = bounce_cycle * 0.040
-            breath = organic(t, freq=0.35, phase=3.77) * 0.022
-
-        char_scale *= 1.0 + breath
-        sq_x = 1.0 + sq_amount
-        sq_y = 1.0 - sq_amount
+        motion_preset = getattr(beat, "motion", "") or resolve_motion_name(anim_name, anim_char)
+        motion_state = compute_motion(
+            motion_preset,
+            t=t,
+            age=age,
+            w_scale=w_scale,
+            speed=getattr(beat, "motion_speed", 1.0),
+            intensity=getattr(beat, "motion_intensity", 1.0),
+        )
+        bob_px = motion_state.bob_px
+        char_cx += motion_state.drift_x / config.width
+        rot_deg = motion_state.rot_deg
+        char_scale *= motion_state.scale_mult
+        sq_x = motion_state.sq_x
+        sq_y = motion_state.sq_y
 
         # ----------------------------------------------------------------
         # Compose frame

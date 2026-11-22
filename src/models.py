@@ -97,6 +97,9 @@ class StoryBeat:
     cat_rotate: float = 0.0   # extra rotation offset in degrees (added to organic)
     accessories: list[Accessory] = field(default_factory=list)  # sprite overlays
     sfx: list[dict] = field(default_factory=list)  # [{"file": "path.mp3", "volume": 0.8}]
+    motion: str = ""                       # motion behavior preset name ("heavy_bounce", "float_gentle", etc.)
+    motion_speed: float = 1.0              # speed multiplier for motion physics
+    motion_intensity: float = 1.0          # intensity/amplitude multiplier for motion physics
 
 
 @dataclass

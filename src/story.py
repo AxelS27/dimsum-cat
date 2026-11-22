@@ -111,6 +111,9 @@ def load_story_json(path: Path, args: argparse.Namespace) -> RenderConfig:
             rich_text_sub   = _load_rich_text(b.get("rich_text_sub")),
             bg_image        = b.get("bg_image", ""),
             character       = b.get("character", ""),
+            motion          = b.get("motion", ""),
+            motion_speed    = float(b.get("motion_speed", 1.0)),
+            motion_intensity = float(b.get("motion_intensity", 1.0)),
         )
         for b in raw_beats
     ]

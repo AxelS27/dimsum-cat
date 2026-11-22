@@ -144,6 +144,9 @@ def main() -> None:
             flip_x        = bool(b.get("flip_x", False)),
             cat_rotate    = float(b.get("cat_rotate", 0.0)),
             accessories   = accessories,
+            motion        = b.get("motion", ""),
+            motion_speed  = float(b.get("motion_speed", 1.0)),
+            motion_intensity = float(b.get("motion_intensity", 1.0)),
         )
 
         beat_bg_raw = b.get("bg_image", "")
