@@ -68,6 +68,30 @@ pinned_comment: ""
 #   "shiver_rumble" - Fast micro-shivering / nervousness
 #   "sway_tilt"     - Playful tilting wobble
 #   "anticipate_hop"- Anticipatory crouch then hop
+#
+# Available Kawaii VFX presets (vfx):
+#   "floating_hearts" - Cute pastel hearts floating upward with gentle sway
+#   "sparkles"        - Twinkling 4-point diamond anime stars
+#   "sweat_drops"     - Anime blue sweat drops sliding down head (nervous)
+#   "anger_vein"      - Classic pulsing red anime cross mark (💢)
+#   "music_notes"     - Musical notes (♪, ♫) drifting upward
+#   "question_marks"  - Cute floating question mark bubbles (?)
+#
+# Multi-Actor Staging:
+#   Optionally specify multiple actors per beat with `actors: [...]`:
+#   actors:
+#     - character: "taeho"
+#       animation: "neutral_regal"
+#       pos: [0.30, 0.65]
+#       scale: 1.2
+#       flip_x: false
+#       ground_shadow: true
+#     - character: "dimsum_cat"
+#       animation: "cooking_present"
+#       pos: [0.70, 0.65]
+#       scale: 1.1
+#       flip_x: true
+#       ground_shadow: true
 # ==============================================================================
 
 beats:
@@ -89,6 +113,10 @@ beats:
     camera: "slow_zoom_in"
     camera_intensity: 0.8
     motion: "breathe"
+    ground_shadow: true
+    vfx:
+      - type: "sparkles"
+        intensity: 1.0
 
   - time: 3.5
     text: "오늘도 좋은 하루 보내세요~"
@@ -103,3 +131,7 @@ beats:
     transition: "crossfade"
     transition_dur: 0.25
     motion: "squash_bounce"
+    ground_shadow: true
+    vfx:
+      - type: "floating_hearts"
+        intensity: 1.2

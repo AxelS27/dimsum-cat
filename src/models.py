@@ -66,6 +66,22 @@ class RichTextSpan:
 
 
 @dataclass
+class ActorConfig:
+    """Configuration for an individual character actor on stage."""
+    character: str = ""                     # character folder (e.g. "dimsum_cat", "taeho", "animals")
+    animation: str = ""                     # animation folder inside character
+    pos: str | list | tuple = "center"      # anchor position: [cx, cy] or preset string
+    scale: float = 1.0                      # scale factor
+    flip_x: bool = False                    # mirror horizontally
+    rotate: float = 0.0                     # extra rotation degrees
+    motion: str = ""                        # motion physics preset ("squash_bounce", "breathe", etc.)
+    motion_speed: float = 1.0               # speed multiplier for motion
+    motion_intensity: float = 1.0           # intensity multiplier for motion
+    ground_shadow: bool = True              # whether to render dynamic contact shadow at feet
+    z_index: int = 0                        # layer order (higher = drawn on top)
+
+
+@dataclass
 class Accessory:
     """A sprite overlay composited on top of the character."""
     image: str              # path to PNG relative to story_dir or project root
@@ -82,7 +98,7 @@ class StoryBeat:
     text: str              # main text (large, prominent)
     sub: str = ""          # secondary line — pinyin, translation, reaction
     animation: str = ""    # switch to this animation (empty = keep previous)
-    pos: str = "center"    # named position or "cx,cy" e.g. "0.3,0.7"
+    pos: str | list | tuple = "center"    # named position or "cx,cy" or [cx, cy]
     scale: float = 1.0     # character scale multiplier
     text_size: str = "normal"  # small | normal | big | huge
     tts_speed: float | None = None        # override auto-detected speed
@@ -104,6 +120,44 @@ class StoryBeat:
     camera_intensity: float = 1.0          # strength of camera movement/shake
     transition: str = ""                   # scene transition ("flash", "crossfade", "circle_wipe", "dip_black", "none")
     transition_dur: float = 0.22           # duration of scene transition in seconds
+    actors: list[ActorConfig] = field(default_factory=list)  # multi-character actors on stage
+    vfx: list[dict] = field(default_factory=list)            # kawaii particle & visual FX triggers
+    ground_shadow: bool = True                               # contact shadow toggle
+
+    def get_actors(self, default_character: str, default_animation: str) -> list[ActorConfig]:
+        """Return list of active actors, resolving single-character beat fallback."""
+        if self.actors:
+            res: list[ActorConfig] = []
+            for a in self.actors:
+                res.append(ActorConfig(
+                    character        = a.character or self.character or default_character,
+                    animation        = a.animation or self.animation or default_animation,
+                    pos              = a.pos,
+                    scale            = a.scale,
+                    flip_x           = a.flip_x,
+                    rotate           = a.rotate if a.rotate != 0.0 else self.cat_rotate,
+                    motion           = a.motion or self.motion,
+                    motion_speed     = a.motion_speed if a.motion_speed != 1.0 else self.motion_speed,
+                    motion_intensity = a.motion_intensity if a.motion_intensity != 1.0 else self.motion_intensity,
+                    ground_shadow    = a.ground_shadow if a.ground_shadow is not None else self.ground_shadow,
+                    z_index          = a.z_index,
+                ))
+            return res
+        return [
+            ActorConfig(
+                character        = self.character or default_character,
+                animation        = self.animation or default_animation,
+                pos              = self.pos,
+                scale            = self.scale,
+                flip_x           = self.flip_x,
+                rotate           = self.cat_rotate,
+                motion           = self.motion,
+                motion_speed     = self.motion_speed,
+                motion_intensity = self.motion_intensity,
+                ground_shadow    = self.ground_shadow,
+                z_index          = 0,
+            )
+        ]
 
 
 @dataclass

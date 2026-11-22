@@ -17,6 +17,7 @@ from dotenv import load_dotenv
 load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
 from src.models import (
+    ActorConfig,
     RenderConfig,
     RichTextSpan,
     StoryBeat,
@@ -28,6 +29,7 @@ from src.utils import (
     find_ffmpeg,
     list_animations,
     slugify,
+    strip_emoji,
     _recalculate_beat_times,
 )
 from src.renderer import render_video_frames, iter_video_frames
@@ -79,12 +81,52 @@ def _load_rich_text(raw: object) -> list[RichTextSpan]:
     spans: list[RichTextSpan] = []
     for item in raw:
         if isinstance(item, str):
-            spans.append(RichTextSpan(text=item))
+            t = strip_emoji(item)
+            if t:
+                spans.append(RichTextSpan(text=t))
         elif isinstance(item, dict):
-            text = str(item.get("text", ""))
+            text = strip_emoji(str(item.get("text", "")))
             if text:
                 spans.append(RichTextSpan(text=text, color=str(item.get("color", "#2a2a2a"))))
     return spans
+
+
+def _load_actors(raw: object) -> list[ActorConfig]:
+    if not isinstance(raw, list):
+        return []
+    actors: list[ActorConfig] = []
+    for a in raw:
+        if isinstance(a, dict):
+            actors.append(
+                ActorConfig(
+                    character        = str(a.get("character", "")),
+                    animation        = str(a.get("animation", "")),
+                    pos              = a.get("pos", "center"),
+                    scale            = float(a.get("scale", 1.0)),
+                    flip_x           = bool(a.get("flip_x", False)),
+                    rotate           = float(a.get("rotate", 0.0)),
+                    motion           = str(a.get("motion", "")),
+                    motion_speed     = float(a.get("motion_speed", 1.0)),
+                    motion_intensity = float(a.get("motion_intensity", 1.0)),
+                    ground_shadow    = bool(a.get("ground_shadow", True)),
+                    z_index          = int(a.get("z_index", 0)),
+                )
+            )
+    return actors
+
+
+def _load_vfx(raw: object) -> list[dict]:
+    if isinstance(raw, str):
+        return [{"type": raw.strip()}]
+    if not isinstance(raw, list):
+        return []
+    res: list[dict] = []
+    for item in raw:
+        if isinstance(item, str):
+            res.append({"type": item.strip()})
+        elif isinstance(item, dict):
+            res.append(item)
+    return res
 
 
 def load_story_file(path: Path, args: argparse.Namespace) -> RenderConfig:
@@ -134,6 +176,9 @@ def load_story_file(path: Path, args: argparse.Namespace) -> RenderConfig:
             camera_intensity = float(b.get("camera_intensity", 1.0)),
             transition      = b.get("transition", ""),
             transition_dur  = float(b.get("transition_dur", 0.22)),
+            actors          = _load_actors(b.get("actors")),
+            vfx             = _load_vfx(b.get("vfx")),
+            ground_shadow   = bool(b.get("ground_shadow", True)),
         )
         for b in raw_beats
     ]

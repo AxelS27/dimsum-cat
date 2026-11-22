@@ -22,6 +22,7 @@ if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
 from src.models import Accessory, RenderConfig, RichTextSpan, StoryBeat
+from src.utils import strip_emoji
 
 
 def _load_rich_text(raw: object) -> list[RichTextSpan]:
@@ -30,7 +31,7 @@ def _load_rich_text(raw: object) -> list[RichTextSpan]:
     spans = []
     for item in raw:
         if isinstance(item, dict):
-            text = str(item.get("text", ""))
+            text = strip_emoji(str(item.get("text", "")))
             if text:
                 spans.append(RichTextSpan(text=text, color=str(item.get("color", "#2a2a2a"))))
     return spans
@@ -109,7 +110,7 @@ def main() -> None:
     height            = int(data.get("height", 1920))
     fps               = int(data.get("fps",    24))
     bg                = data.get("bg", "#f8f4f0")
-    from src.story import _resolve_story_path
+    from src.story import _resolve_story_path, _load_actors, _load_vfx
     bg_image          = _resolve_story_path(data.get("bg_image", ""), story_dir)
     default_animation = data.get("animation", "normal_talk")
     default_character = data.get("character", "dimsum_cat")
@@ -165,6 +166,9 @@ def main() -> None:
             camera_intensity = float(b.get("camera_intensity", 1.0)),
             transition    = b.get("transition", ""),
             transition_dur = float(b.get("transition_dur", 0.22)),
+            actors        = _load_actors(b.get("actors")),
+            vfx           = _load_vfx(b.get("vfx")),
+            ground_shadow = bool(b.get("ground_shadow", True)),
         )
 
         beat_bg_raw = b.get("bg_image", "")
