@@ -74,6 +74,8 @@ pinned_comment: ""
 #   "dip_black"    - Dip to black fade transition
 #
 # Available motion profiles:
+#   "walk"          - Rhythmic cartoon walking gait with step squash & footstep bob
+#   "float_walk"    - Dreamy, ethereal floating glide across the screen
 #   "squash_bounce" - Playful bounce with vertical squash-and-stretch
 #   "float_sine"    - Gentle hover float with subtle rotation
 #   "pop_in"        - Elastic scale-up entrance pop
@@ -81,6 +83,15 @@ pinned_comment: ""
 #   "shiver_rumble" - Fast micro-shivering / nervousness
 #   "sway_tilt"     - Playful tilting wobble
 #   "anticipate_hop"- Anticipatory crouch then hop
+#
+# Dynamic Character Walking & Waypoints (path / move_to):
+#   - move_to: [0.70, 0.65]           # smooth movement from pos to target pos
+#   - path: [[0.25, 0.65], [0.50, 0.65], [0.00, 0.65], [0.50, 0.65]] # multi-waypoint path!
+#   - auto_tilt: true                 # leans/tilts forward into movement direction (float for custom angle)
+#   - auto_flip: true                 # automatically flips left/right to face walk direction
+#   - move_speed: 1.0                 # movement speed multiplier (0.5 = 2x slower, leisurely walk)
+#   - move_ease: "smooth"             # "smooth" (zero-jerk), "in_out", "linear"
+#   Note: Coordinates can be 0.0-1.0 OR percentages like [25, 65] -> auto-scaled to 0.25, 0.65!
 #
 # Available Kawaii VFX presets (vfx):
 #   "floating_hearts" - Cute pastel hearts floating upward with gentle sway

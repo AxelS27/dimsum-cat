@@ -55,13 +55,24 @@ def find_ffmpeg() -> str | None:
 
 
 def resolve_pos(pos: str | list | tuple) -> tuple[float, float]:
+    """Resolve position from named presets, coordinates, or percentage numbers."""
     if isinstance(pos, (list, tuple)) and len(pos) >= 2:
-        return float(pos[0]), float(pos[1])
+        x, y = float(pos[0]), float(pos[1])
+        if x > 1.0:
+            x /= 100.0
+        if y > 1.0:
+            y /= 100.0
+        return x, y
     if isinstance(pos, str) and pos in POSITIONS:
         return POSITIONS[pos]
     try:
-        a, b = str(pos).split(",")
-        return float(a), float(b)
+        parts = str(pos).split(",")
+        x, y = float(parts[0].strip()), float(parts[1].strip())
+        if x > 1.0:
+            x /= 100.0
+        if y > 1.0:
+            y /= 100.0
+        return x, y
     except (ValueError, IndexError):
         return POSITIONS["center"]
 
@@ -144,6 +155,22 @@ def ease_out_back(t: float) -> float:
     """Spring overshoot — punchy scale pop."""
     c1, c3 = 1.30, 2.30
     return 1 + c3 * (t - 1) ** 3 + c1 * (t - 1) ** 2
+
+
+def get_ease_func(name: str) -> Callable[[float], float]:
+    """Resolve easing curve function by name."""
+    n = (name or "smooth").lower().strip()
+    if n in ("smooth", "smootherstep", "quintic"):
+        return ease_smooth
+    elif n in ("in_out", "ease_in_out", "cubic_in_out"):
+        return ease_in_out
+    elif n in ("linear", "none"):
+        return lambda t: max(0.0, min(1.0, t))
+    elif n in ("snappy", "overshoot", "spring", "back"):
+        return ease_out_back
+    elif n in ("cubic", "ease_out", "fast_start"):
+        return ease_out_cubic
+    return ease_smooth
 
 
 def list_animations() -> list[str]:

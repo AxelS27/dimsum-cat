@@ -1,0 +1,126 @@
+# ==============================================================================
+# DIMsum Cat — Dramatic Pacing & Waypoints Showcase (Dracin / K-Drama Walk)
+# ==============================================================================
+# Demonstrates:
+# - Dynamic actor waypoints & paths (`path: [[x1, y1], [x2, y2], ...]`)
+# - Direct movement (`move_to: [x, y]`)
+# - Auto-tilt leaning forward into walking direction
+# - Auto-flip turning to face where the character is walking
+# - Procedural walking gait (`motion: "walk"`) with footstep bob & squash
+# - Camera tracking a moving walking actor in real-time
+
+title: "DIMsum Cat's Dramatic Pacing"
+description: >
+  DIMsum Cat paces back and forth dramatically in the royal palace! 🐱🏰
+  Will the royal secret be revealed?
+
+  #dimsumcat #kdrama #dracin #animation #cute #kawaii #chibi #fyp
+
+fps: 24
+width: 1080
+height: 1920
+duration: 9.0
+bg: "#fdf8f4"
+bg_image: "../../../assets/background/dining_hall.png"
+character: "dimsum_cat"
+default_animation: "normal_talk"
+
+tts: false
+bg_music: "../../../assets/music/love_maybe.mp3"
+bg_music_start: "00:00"
+bg_volume: 0.85
+
+watermark: ""
+pinned_comment: "Why is DIMsum Cat pacing so dramatically? 🐱💭"
+
+beats:
+  # Beat 1: Entrance Walk — DIMsum Cat enters walking from stage left to center
+  - time: 0.00
+    text: "어떡하지... 폐하께 들키면 안 되는데!"
+    sub: "What should I do... The King must not find out!"
+    rich_text:
+      - text: "어떡하지... "
+        color: "#ea580c"
+      - text: "폐하께 들키면 안 되는데!"
+        color: "#2a2a2a"
+    animation: "nervous_sweat"
+    pos: [0.15, 0.69]
+    move_to: [0.50, 0.69]
+    move_speed: 1.0
+    move_ease: "smooth"
+    auto_tilt: true
+    auto_flip: true
+    motion: "walk"
+    text_size: "big"
+    camera:
+      type: "tracking"
+      target: "dimsum_cat"
+      zoom: 1.10
+    vfx:
+      - type: "sweat_drops"
+
+  # Beat 2: Dramatic Dracin Pacing — Pacing back and forth across waypoints!
+  # Path: center (50) -> right (75) -> left (25) -> center (50)
+  - time: 3.00
+    text: "왼쪽으로 갈까? 아니, 오른쪽으로 갈까?!"
+    sub: "Should I go left? Or maybe right?!"
+    rich_text:
+      - text: "왼쪽으로 갈까? "
+        color: "#0284c7"
+      - text: "아니, 오른쪽으로 갈까?!"
+        color: "#e11d48"
+    animation: "confused_thinking"
+    pos: [0.50, 0.69]
+    path: [[0.50, 0.69], [0.75, 0.69], [0.25, 0.69], [0.50, 0.69]]
+    move_speed: 1.0
+    move_ease: "smooth"
+    auto_tilt: 1.2
+    auto_flip: true
+    motion: "walk"
+    text_size: "big"
+    camera:
+      type: "slow_zoom_in"
+      zoom: 1.15
+      speed: 0.7
+    vfx:
+      - type: "question_marks"
+        intensity: 1.2
+
+  # Beat 3: Resolution — King Tae-ho watches as DIMsum Cat approaches with finger heart
+  - time: 6.00
+    text: "폐하! 사실... 깜짝 선물이에요~"
+    sub: "Your Majesty! Actually... it's a surprise gift~"
+    rich_text:
+      - text: "폐하! "
+        color: "#d97706"
+      - text: "사실... 깜짝 선물이에요~"
+        color: "#ec4899"
+    text_size: "big"
+    camera:
+      type: "dutch_tilt"
+      roll: -2.5
+      zoom: 1.08
+      speed: 0.8
+    vfx:
+      - type: "floating_hearts"
+        intensity: 1.5
+    actors:
+      - character: "taeho"
+        animation: "neutral_regal"
+        pos: [0.28, 0.68]
+        scale: 1.25
+        flip_x: false
+        motion: "breathe"
+        ground_shadow: true
+        z_index: 0
+      - character: "dimsum_cat"
+        animation: "finger_heart"
+        pos: [0.78, 0.69]
+        move_to: [0.62, 0.69]
+        move_speed: 1.0
+        auto_tilt: true
+        auto_flip: true
+        motion: "walk"
+        scale: 1.15
+        ground_shadow: true
+        z_index: 1

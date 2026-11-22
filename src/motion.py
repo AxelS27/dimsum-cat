@@ -2,7 +2,12 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
-from typing import Callable
+from typing import Callable, TYPE_CHECKING
+
+from src.utils import get_ease_func, lerp, resolve_pos
+
+if TYPE_CHECKING:
+    from src.models import ActorConfig
 
 
 @dataclass(slots=True)
@@ -185,6 +190,168 @@ def motion_sleepy_drift(t: float, age: float, w_scale: float, speed: float = 1.0
     )
 
 
+def motion_walk(t: float, age: float, w_scale: float, speed: float = 1.0, intensity: float = 1.0) -> MotionState:
+    """Rhythmic walking gait with cute footstep bobbing, step squash, and side-to-side sway."""
+    s = speed
+    i = intensity
+    # Two steps per cycle (left step, right step)
+    step_cycle = math.sin(t * math.pi * 3.6 * s)
+    # Sharp footstep bounce — dips on contact, springs up on stride
+    bob = -abs(step_cycle) * 16.0 * i * w_scale
+    # Rhythmic swagger / head bob
+    rot = math.sin(t * math.pi * 1.8 * s) * 4.0 * i
+    # Squash on foot contact
+    sq = -abs(step_cycle) * 0.045 * i
+    breath = organic(t * s, freq=0.35, phase=0.0) * 0.020 * i
+    return MotionState(
+        bob_px=bob,
+        drift_x=0.0,
+        rot_deg=rot,
+        sq_x=1.0 + sq,
+        sq_y=1.0 - sq,
+        scale_mult=1.0 + breath,
+    )
+
+
+def motion_float_walk(t: float, age: float, w_scale: float, speed: float = 1.0, intensity: float = 1.0) -> MotionState:
+    """Dreamy, buoyant floating/hovering glide across space."""
+    s = speed
+    i = intensity
+    bob = math.sin(age * 3.2 * s) * 14.0 * i * w_scale
+    drift = math.cos(age * 1.6 * s) * 6.0 * i * w_scale
+    rot = math.sin(age * 2.2 * s) * 3.5 * i
+    sq = math.sin(age * 3.2 * s) * 0.025 * i
+    breath = organic(t * s, freq=0.30, phase=1.0) * 0.020 * i
+    return MotionState(
+        bob_px=bob,
+        drift_x=drift,
+        rot_deg=rot,
+        sq_x=1.0 + sq,
+        sq_y=1.0 - sq,
+        scale_mult=1.0 + breath,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Dynamic Actor Waypoint Trajectory & Auto-Tilt Physics
+# ---------------------------------------------------------------------------
+
+@dataclass(slots=True)
+class TrajectoryState:
+    """Dynamic movement and spatial trajectory state for an actor in a frame."""
+    cx: float               # world X coordinate (0.0 to 1.0)
+    cy: float               # world Y coordinate (0.0 to 1.0)
+    vel_x: float            # velocity in X (units/sec)
+    vel_y: float            # velocity in Y (units/sec)
+    tilt_deg: float         # dynamic tilt angle (degrees) based on walk direction & velocity
+    flip_x: bool            # effective flip_x (honoring auto_flip or manual flip_x)
+    is_moving: bool         # whether actor is currently in motion
+
+
+def eval_actor_trajectory(
+    actor: ActorConfig,
+    age: float,
+    beat_dur: float,
+) -> TrajectoryState:
+    """Compute actor's world coordinates, velocity, dynamic tilt, and orientation."""
+    raw_path = getattr(actor, "path", None)
+    raw_move_to = getattr(actor, "move_to", None)
+
+    waypoints: list[tuple[float, float]] = []
+    if raw_path and isinstance(raw_path, (list, tuple)) and len(raw_path) >= 2:
+        waypoints = [resolve_pos(p) for p in raw_path]
+    elif raw_move_to is not None:
+        p_start = resolve_pos(actor.pos)
+        p_end = resolve_pos(raw_move_to)
+        waypoints = [p_start, p_end]
+    else:
+        # Stationary actor
+        p = resolve_pos(actor.pos)
+        return TrajectoryState(
+            cx=p[0],
+            cy=p[1],
+            vel_x=0.0,
+            vel_y=0.0,
+            tilt_deg=0.0,
+            flip_x=actor.flip_x,
+            is_moving=False,
+        )
+
+    eff_speed = max(0.05, getattr(actor, "move_speed", 1.0))
+    move_dur = (actor.move_dur if actor.move_dur is not None else max(0.1, beat_dur)) / eff_speed
+
+    loop_path = getattr(actor, "loop_path", False)
+    if loop_path:
+        norm_t = (age % max(0.01, move_dur)) / max(0.01, move_dur)
+    else:
+        norm_t = min(1.0, max(0.0, age / max(0.01, move_dur)))
+
+    ease_func = get_ease_func(getattr(actor, "move_ease", "smooth"))
+
+    def _sample_point(t_val: float) -> tuple[float, float]:
+        if len(waypoints) == 1:
+            return waypoints[0]
+        num_segs = len(waypoints) - 1
+        scaled = t_val * num_segs
+        seg_idx = min(num_segs - 1, max(0, int(scaled)))
+        local_t = scaled - seg_idx
+        u = ease_func(local_t)
+        p0 = waypoints[seg_idx]
+        p1 = waypoints[seg_idx + 1]
+        return lerp(p0[0], p1[0], u), lerp(p0[1], p1[1], u)
+
+    cx, cy = _sample_point(norm_t)
+
+    # Velocity estimation via numerical forward step
+    delta_t = 0.02
+    step_val = delta_t / max(0.05, move_dur)
+    next_t = min(1.0, norm_t + step_val) if not loop_path else (norm_t + step_val) % 1.0
+    if next_t != norm_t:
+        nx, ny = _sample_point(next_t)
+        dt = (next_t - norm_t) * move_dur
+        vel_x = (nx - cx) / max(0.001, dt)
+        vel_y = (ny - cy) / max(0.001, dt)
+    else:
+        prev_t = max(0.0, norm_t - step_val)
+        px, py = _sample_point(prev_t)
+        dt = (norm_t - prev_t) * move_dur
+        vel_x = (cx - px) / max(0.001, dt) * 0.1
+        vel_y = (cy - py) / max(0.001, dt) * 0.1
+
+    is_moving = (abs(vel_x) > 0.008 or abs(vel_y) > 0.008) and (norm_t < 1.0 or loop_path)
+
+    # Auto-tilt: lean forward into movement direction (negative angle = lean right, positive angle = lean left)
+    auto_tilt = getattr(actor, "auto_tilt", True)
+    if isinstance(auto_tilt, (int, float)) and not isinstance(auto_tilt, bool):
+        lean_factor = float(auto_tilt)
+    else:
+        lean_factor = 1.0 if auto_tilt else 0.0
+
+    tilt_deg = -lean_factor * 7.5 * math.tanh(vel_x * 4.0)
+
+    # Auto-flip: face movement direction (right = flip_x False, left = flip_x True)
+    auto_flip = getattr(actor, "auto_flip", True)
+    if auto_flip:
+        if vel_x > 0.02:
+            effective_flip = False
+        elif vel_x < -0.02:
+            effective_flip = True
+        else:
+            effective_flip = actor.flip_x
+    else:
+        effective_flip = actor.flip_x
+
+    return TrajectoryState(
+        cx=cx,
+        cy=cy,
+        vel_x=vel_x,
+        vel_y=vel_y,
+        tilt_deg=tilt_deg,
+        flip_x=effective_flip,
+        is_moving=is_moving,
+    )
+
+
 # ---------------------------------------------------------------------------
 # Registry & Resolver
 # ---------------------------------------------------------------------------
@@ -202,6 +369,13 @@ MOTION_REGISTRY: dict[str, MotionFunc] = {
     "panic_jitter": motion_panic_jitter,
     "proud_strut": motion_proud_strut,
     "sleepy_drift": motion_sleepy_drift,
+    "walk": motion_walk,
+    "walking": motion_walk,
+    "pacing": motion_walk,
+    "step": motion_walk,
+    "float_walk": motion_float_walk,
+    "glide": motion_float_walk,
+    "hover": motion_float_walk,
 }
 
 # Auto-mapping when a beat does not explicitly specify "motion"

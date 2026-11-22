@@ -27,7 +27,7 @@ from src.utils import (
     strip_emoji,
 )
 from src.sprite import organic, make_sprite_schedule, load_frames
-from src.motion import resolve_motion_name, compute_motion
+from src.motion import resolve_motion_name, compute_motion, eval_actor_trajectory, TrajectoryState
 from src.camera import compute_camera, apply_transition
 from src.vfx import render_vfx_layer
 
@@ -412,31 +412,35 @@ def iter_video_frames(
             last_beat_idx = beat_idx
 
         # ----------------------------------------------------------------
-        # Multi-Actor Staging & Motion Pre-Evaluation
-        # ----------------------------------------------------------------
-        actors = beat.get_actors(config.default_character, config.default_animation)
-        sorted_actors = sorted(actors, key=lambda a: a.z_index)
-
-        # Collect actor positions and evaluate motions for camera coupling
-        actor_positions: dict[str, tuple[float, float]] = {}
-        actor_motions: dict[str, tuple[float, float]] = {}
-        for a in sorted_actors:
-            ch = a.character or config.default_character
-            an = a.animation or config.default_animation
-            p = resolve_pos(a.pos)
-            actor_positions[ch] = p
-            mp = a.motion or resolve_motion_name(an, ch)
-            ms = compute_motion(mp, t=t, age=age, w_scale=w_scale, speed=a.motion_speed, intensity=a.motion_intensity)
-            actor_motions[ch] = (ms.drift_x, ms.bob_px)
-
-        # ----------------------------------------------------------------
-        # Beat Duration & Virtual Cinematic Director Camera
+        # Beat Duration & Dynamic Actor Trajectory Pre-Evaluation
         # ----------------------------------------------------------------
         if beat_idx + 1 < len(beats):
             beat_dur = max(0.1, beats[beat_idx + 1].time - beat.time)
         else:
             beat_dur = max(0.1, config.duration - beat.time)
 
+        actors = beat.get_actors(config.default_character, config.default_animation)
+        sorted_actors = sorted(actors, key=lambda a: a.z_index)
+
+        # Collect dynamic actor trajectory positions and evaluate motions for camera coupling
+        actor_positions: dict[str, tuple[float, float]] = {}
+        actor_motions: dict[str, tuple[float, float]] = {}
+        actor_trajectories: dict[int, TrajectoryState] = {}
+        for a_idx, a in enumerate(sorted_actors):
+            ch = a.character or config.default_character
+            an = a.animation or config.default_animation
+            traj = eval_actor_trajectory(a, age=age, beat_dur=beat_dur)
+            actor_trajectories[a_idx] = traj
+            actor_positions[ch] = (traj.cx, traj.cy)
+            mp = a.motion
+            if not mp:
+                mp = "walk" if traj.is_moving else resolve_motion_name(an, ch)
+            ms = compute_motion(mp, t=t, age=age, w_scale=w_scale, speed=a.motion_speed, intensity=a.motion_intensity)
+            actor_motions[ch] = (ms.drift_x, ms.bob_px)
+
+        # ----------------------------------------------------------------
+        # Virtual Cinematic Director Camera
+        # ----------------------------------------------------------------
         cam_cfg = beat.get_camera_config()
         cam = compute_camera(
             cam_cfg,
@@ -517,7 +521,7 @@ def iter_video_frames(
         # ----------------------------------------------------------------
         actor_anchors: list[tuple[float, float]] = []
 
-        for actor in sorted_actors:
+        for a_idx, actor in enumerate(sorted_actors):
             act_char = actor.character or config.default_character
             act_anim = actor.animation or config.default_animation
             cache_key = (act_char, act_anim)
@@ -530,8 +534,9 @@ def iter_video_frames(
             sprite = sprite_frames[schedule[idx % len(schedule)]].copy()
             orig_w, orig_h = orig_size
 
-            # Target position and scale in world space
-            target_cx, target_cy = resolve_pos(actor.pos)
+            # Dynamic Trajectory (waypoints, movement path, auto-tilt, auto-flip)
+            traj = actor_trajectories.get(a_idx) or eval_actor_trajectory(actor, age=age, beat_dur=beat_dur)
+            target_cx, target_cy = traj.cx, traj.cy
             target_scale = actor.scale
 
             # Entrance bounce/pop only triggers for brand new appearances on stage
@@ -545,8 +550,10 @@ def iter_video_frames(
                 char_scale = target_scale
                 rise = 0.0
 
-            # Motion behavior physics
-            motion_preset = actor.motion or resolve_motion_name(act_anim, act_char)
+            # Motion behavior physics (auto-select walk gait if actor is moving along a path)
+            motion_preset = actor.motion
+            if not motion_preset:
+                motion_preset = "walk" if traj.is_moving else resolve_motion_name(act_anim, act_char)
             motion_state = compute_motion(
                 motion_preset,
                 t=t,
@@ -563,7 +570,8 @@ def iter_video_frames(
             screen_cx = 0.5 + (world_cx - cam.center_x) * cam.zoom + (cam.shake_x / config.width)
             screen_cy = 0.5 + (world_cy - cam.center_y) * cam.zoom + (cam.shake_y / config.height)
             char_scale *= motion_state.scale_mult * cam.zoom
-            rot_deg = motion_state.rot_deg + cam.roll_deg + actor.rotate
+            # Auto-tilt in direction of movement + camera roll + manual rotate + organic rot
+            rot_deg = motion_state.rot_deg + traj.tilt_deg + cam.roll_deg + actor.rotate
             sq_x = motion_state.sq_x
             sq_y = motion_state.sq_y
 
@@ -574,8 +582,8 @@ def iter_video_frames(
             new_h = max(1, int(sprite.height * sf * sq_y))
             sprite = sprite.resize((new_w, new_h), Image.Resampling.LANCZOS)
 
-            # Flip character horizontally
-            if actor.flip_x:
+            # Dynamic orientation (auto-flip to face walking direction or manual flip)
+            if traj.flip_x:
                 sprite = sprite.transpose(Image.Transpose.FLIP_LEFT_RIGHT)
 
             # Rotate

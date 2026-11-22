@@ -74,11 +74,19 @@ class ActorConfig:
     scale: float = 1.0                      # scale factor
     flip_x: bool = False                    # mirror horizontally
     rotate: float = 0.0                     # extra rotation degrees
-    motion: str = ""                        # motion physics preset ("squash_bounce", "breathe", etc.)
+    motion: str = ""                        # motion physics preset ("squash_bounce", "breathe", "walk", etc.)
     motion_speed: float = 1.0               # speed multiplier for motion
     motion_intensity: float = 1.0           # intensity multiplier for motion
     ground_shadow: bool = True              # whether to render dynamic contact shadow at feet
     z_index: int = 0                        # layer order (higher = drawn on top)
+    move_to: str | list | tuple | None = None  # target end position for movement [x, y] or preset
+    path: list | None = None                   # multi-waypoint path [[x1, y1], [x2, y2], ...]
+    move_speed: float = 1.0                    # speed multiplier for path traversal
+    move_ease: str = "smooth"                  # easing curve ("smooth", "in_out", "linear", "snappy")
+    move_dur: float | None = None              # movement duration in seconds (None = beat_dur / move_speed)
+    auto_tilt: bool | float = True             # lean forward in direction of motion (float = custom lean factor)
+    auto_flip: bool = True                     # auto-flip sprite horizontally to face walking direction
+    loop_path: bool = False                    # repeat waypoint path cyclically
 
 
 @dataclass
@@ -141,6 +149,14 @@ class StoryBeat:
     actors: list[ActorConfig] = field(default_factory=list)  # multi-character actors on stage
     vfx: list[dict] = field(default_factory=list)            # kawaii particle & visual FX triggers
     ground_shadow: bool = True                               # contact shadow toggle
+    move_to: str | list | tuple | None = None                # single-actor target position for movement
+    path: list | None = None                                 # single-actor multi-waypoint path
+    move_speed: float = 1.0                                  # speed multiplier for movement
+    move_ease: str = "smooth"                                # movement easing ("smooth", "in_out", "linear", etc.)
+    move_dur: float | None = None                            # movement duration (None = beat_dur / move_speed)
+    auto_tilt: bool | float = True                           # auto-lean forward into movement direction
+    auto_flip: bool = True                                   # auto-flip sprite horizontally to face walk direction
+    loop_path: bool = False                                  # repeat waypoints cyclically
 
     def get_camera_config(self) -> CameraConfig:
         """Resolve camera settings into a strongly-typed CameraConfig."""
@@ -184,6 +200,14 @@ class StoryBeat:
                     motion_intensity = a.motion_intensity if a.motion_intensity != 1.0 else self.motion_intensity,
                     ground_shadow    = a.ground_shadow if a.ground_shadow is not None else self.ground_shadow,
                     z_index          = a.z_index,
+                    move_to          = a.move_to or (self.move_to if not a.path else None),
+                    path             = a.path or self.path,
+                    move_speed       = a.move_speed if a.move_speed != 1.0 else self.move_speed,
+                    move_ease        = a.move_ease or self.move_ease,
+                    move_dur         = a.move_dur if a.move_dur is not None else self.move_dur,
+                    auto_tilt        = a.auto_tilt,
+                    auto_flip        = a.auto_flip,
+                    loop_path        = a.loop_path,
                 ))
             return res
         return [
@@ -199,6 +223,14 @@ class StoryBeat:
                 motion_intensity = self.motion_intensity,
                 ground_shadow    = self.ground_shadow,
                 z_index          = 0,
+                move_to          = self.move_to,
+                path             = self.path,
+                move_speed       = self.move_speed,
+                move_ease        = self.move_ease,
+                move_dur         = self.move_dur,
+                auto_tilt        = self.auto_tilt,
+                auto_flip        = self.auto_flip,
+                loop_path        = self.loop_path,
             )
         ]
 

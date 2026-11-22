@@ -110,6 +110,14 @@ def _load_actors(raw: object) -> list[ActorConfig]:
                     motion_intensity = float(a.get("motion_intensity", 1.0)),
                     ground_shadow    = bool(a.get("ground_shadow", True)),
                     z_index          = int(a.get("z_index", 0)),
+                    move_to          = a.get("move_to") or a.get("pos_to"),
+                    path             = a.get("path") or a.get("waypoints"),
+                    move_speed       = float(a.get("move_speed", 1.0)),
+                    move_ease        = str(a.get("move_ease", "smooth")),
+                    move_dur         = float(a["move_dur"]) if "move_dur" in a else None,
+                    auto_tilt        = a.get("auto_tilt", True),
+                    auto_flip        = bool(a.get("auto_flip", True)),
+                    loop_path        = bool(a.get("loop_path", False)),
                 )
             )
     return actors
@@ -179,6 +187,14 @@ def load_story_file(path: Path, args: argparse.Namespace) -> RenderConfig:
             actors          = _load_actors(b.get("actors")),
             vfx             = _load_vfx(b.get("vfx")),
             ground_shadow   = bool(b.get("ground_shadow", True)),
+            move_to         = b.get("move_to") or b.get("pos_to"),
+            path            = b.get("path") or b.get("waypoints"),
+            move_speed      = float(b.get("move_speed", 1.0)),
+            move_ease       = str(b.get("move_ease", "smooth")),
+            move_dur        = float(b["move_dur"]) if "move_dur" in b else None,
+            auto_tilt       = b.get("auto_tilt", True),
+            auto_flip       = bool(b.get("auto_flip", True)),
+            loop_path       = bool(b.get("loop_path", False)),
         )
         for b in raw_beats
     ]
