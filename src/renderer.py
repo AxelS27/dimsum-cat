@@ -370,13 +370,14 @@ def iter_video_frames(
     last_cam_state: CameraState | None = None
     last_beat_idx: int = -1
     beat_cam_start: CameraState | None = None
+    prev_chars: set[str] = set()
 
     for idx in range(frame_start, frame_end):
         t = idx / config.fps
         beat_idx, beat = beat_at(t)
         age = t - beat.time
 
-        # Track camera continuity across beats in the same scene
+        # Track camera and actor continuity across beats in the same scene
         if beat_idx != last_beat_idx:
             if last_beat_idx >= 0 and last_cam_state is not None:
                 prev_b = beats[last_beat_idx]
@@ -390,8 +391,24 @@ def iter_video_frames(
                     or getattr(beat.get_camera_config(), "type", "") == "cut"
                 )
                 beat_cam_start = None if is_scene_cut else last_cam_state
+                prev_actors = prev_b.get_actors(config.default_character, config.default_animation)
+                prev_chars = {a.character or config.default_character for a in prev_actors} if not is_scene_cut else set()
+            elif beat_idx > 0 and last_beat_idx < 0:
+                # Started mid-stream (chunk or preview)
+                prev_b = beats[beat_idx - 1]
+                prev_bg = prev_b.bg_image or config.bg_image
+                curr_bg = beat.bg_image or config.bg_image
+                is_scene_cut = (
+                    prev_bg != curr_bg
+                    or beat.transition in ("dip_black", "fade_black", "circle_wipe", "iris", "cut")
+                    or getattr(beat.get_camera_config(), "type", "") == "cut"
+                )
+                beat_cam_start = None
+                prev_actors = prev_b.get_actors(config.default_character, config.default_animation)
+                prev_chars = {a.character or config.default_character for a in prev_actors} if not is_scene_cut else set()
             else:
                 beat_cam_start = None
+                prev_chars = set()
             last_beat_idx = beat_idx
 
         # ----------------------------------------------------------------
@@ -517,7 +534,9 @@ def iter_video_frames(
             target_cx, target_cy = resolve_pos(actor.pos)
             target_scale = actor.scale
 
-            if age < ENTRANCE_DUR:
+            # Entrance bounce/pop only triggers for brand new appearances on stage
+            is_new_actor = (act_char not in prev_chars)
+            if is_new_actor and age < ENTRANCE_DUR:
                 prog = age / ENTRANCE_DUR
                 spring = ease_out_back(prog)
                 char_scale = target_scale * (0.60 + 0.40 * spring)

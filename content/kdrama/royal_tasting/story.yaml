@@ -87,9 +87,11 @@ beats:
     camera:
       type: "slow_zoom_in"
       target: "dimsum_cat"
-      zoom: 1.18
+      zoom: 1.15
+      speed: 0.65
+      ease: "smooth"
       reactive_actor: "dimsum_cat"
-      reactive_factor: 0.40
+      reactive_factor: 0.25
     vfx:
       - type: "sweat_drops"
     actors:
@@ -165,6 +167,8 @@ beats:
       type: "dutch_tilt"
       roll: -2.0
       zoom: 1.05
+      speed: 0.85
+      ease: "smooth"
     vfx:
       - type: "floating_hearts"
         intensity: 1.5

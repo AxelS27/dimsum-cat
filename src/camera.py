@@ -18,7 +18,23 @@ from typing import Callable
 from PIL import Image, ImageDraw
 
 from src.models import CameraConfig
-from src.utils import ease_out_back, ease_out_cubic, lerp
+from src.utils import ease_out_back, ease_out_cubic, ease_smooth, ease_in_out, lerp
+
+
+def _get_ease_func(ease_name: str) -> Callable[[float], float]:
+    """Resolve easing curve function for camera moves."""
+    name = (ease_name or "smooth").lower().strip()
+    if name in ("smooth", "smootherstep", "quintic"):
+        return ease_smooth
+    elif name in ("in_out", "ease_in_out", "cubic_in_out"):
+        return ease_in_out
+    elif name in ("linear", "none"):
+        return lambda t: max(0.0, min(1.0, t))
+    elif name in ("snappy", "overshoot", "spring", "back"):
+        return ease_out_back
+    elif name in ("cubic", "ease_out", "fast_start"):
+        return ease_out_cubic
+    return ease_smooth
 
 
 @dataclass(slots=True)
@@ -88,6 +104,8 @@ def compute_camera(
             zoom            = float(camera_input.get("zoom", 1.0)),
             zoom_start      = float(camera_input["zoom_start"]) if "zoom_start" in camera_input else None,
             intensity       = float(camera_input.get("intensity", intensity)),
+            speed           = float(camera_input.get("speed", 1.0)),
+            ease            = str(camera_input.get("ease", "smooth")),
             roll            = float(camera_input.get("roll", 0.0)),
             pan_from        = camera_input.get("pan_from"),
             pan_to          = camera_input.get("pan_to"),
@@ -103,7 +121,9 @@ def compute_camera(
 
     cam_type = cfg.type.lower().strip()
     eff_intensity = cfg.intensity
-    dur = cfg.duration or max(0.1, beat_dur)
+    eff_speed = max(0.05, float(getattr(cfg, "speed", 1.0)))
+    ease_func = _get_ease_func(getattr(cfg, "ease", "smooth"))
+    dur = (cfg.duration if cfg.duration is not None else max(0.1, beat_dur)) / eff_speed
 
     # Initial anchor: carry over from end of previous beat (eliminates teleportation)
     if cam_start is not None:
@@ -123,7 +143,7 @@ def compute_camera(
 
     # 1. Rock-solid Static Camera (Smoothly settles in from previous pose if needed)
     if cam_type in ("static", "none", "steady"):
-        settle_dur = cfg.duration or 0.45
+        settle_dur = (cfg.duration or 0.45) / eff_speed
         has_drift = (
             abs(start_cx - 0.5) > 0.005 or
             abs(start_cy - 0.5) > 0.005 or
@@ -133,7 +153,7 @@ def compute_camera(
             abs(prev_shake_y) > 0.5
         )
         if cam_start is not None and has_drift and age < settle_dur:
-            prog = ease_out_cubic(age / settle_dur)
+            prog = ease_func(min(1.0, age / settle_dur))
             state = CameraState(
                 zoom     = lerp(start_zoom, 1.0, prog),
                 center_x = lerp(start_cx, 0.5, prog),
@@ -152,8 +172,9 @@ def compute_camera(
 
     # 2. Crash Zoom (Snap-zooms directly from start position to target)
     elif cam_type in ("crash_zoom", "crash"):
-        zoom_dur = cfg.duration or 0.18
-        prog = ease_out_back(min(1.0, age / zoom_dur))
+        zoom_dur = (cfg.duration or 0.22) / eff_speed
+        crash_ease = ease_out_back if getattr(cfg, "ease", "smooth") == "smooth" else ease_func
+        prog = crash_ease(min(1.0, age / zoom_dur))
         target_pos = resolve_target_pos(cfg.target, actor_positions) or (0.5, 0.5)
         target_zoom = cfg.zoom if cfg.zoom != 1.0 else (1.35 * eff_intensity)
 
@@ -171,7 +192,7 @@ def compute_camera(
 
     # 3. Zoom Punch (Elastic beat punch)
     elif cam_type in ("zoom_punch", "punch"):
-        punch_dur = cfg.duration or 0.32
+        punch_dur = (cfg.duration or 0.32) / eff_speed
         if age < punch_dur:
             prog = age / punch_dur
             spring = ease_out_back(prog)
@@ -187,7 +208,7 @@ def compute_camera(
 
     # 4. Cinematic Slow Zoom In (Glides smoothly from previous camera state)
     elif cam_type in ("slow_zoom_in", "zoom_in", "push_in"):
-        prog = ease_out_cubic(min(1.0, age / dur))
+        prog = ease_func(min(1.0, age / dur))
         target_pos = resolve_target_pos(cfg.target, actor_positions) or (0.5, 0.5)
         target_zoom = cfg.zoom if cfg.zoom != 1.0 else (1.0 + 0.08 * eff_intensity)
         zoom = lerp(start_zoom, target_zoom, prog)
@@ -198,16 +219,17 @@ def compute_camera(
 
     # 5. Cinematic Slow Zoom Out (Pull back towards wide shot)
     elif cam_type in ("slow_zoom_out", "zoom_out", "pull_back"):
-        prog = ease_out_cubic(min(1.0, age / dur))
+        prog = ease_func(min(1.0, age / dur))
+        target_pos = resolve_target_pos(cfg.target, actor_positions) or (0.5, 0.5)
         zoom = lerp(start_zoom, 1.0, prog)
-        cx = lerp(start_cx, 0.5, prog)
-        cy = lerp(start_cy, 0.5, prog)
+        cx = lerp(start_cx, target_pos[0], prog)
+        cy = lerp(start_cy, target_pos[1], prog)
         roll = lerp(start_roll, cfg.roll, prog)
         state = CameraState(zoom=zoom, center_x=cx, center_y=cy, roll_deg=roll)
 
     # 6. Tracking Shot (Dolly follow from A to B)
     elif cam_type in ("tracking", "dolly", "follow"):
-        prog = min(1.0, age / dur)
+        prog = ease_func(min(1.0, age / dur))
         p_from = resolve_target_pos(cfg.pan_from, actor_positions) or (start_cx, start_cy)
         p_to = resolve_target_pos(cfg.pan_to, actor_positions) or (0.65, 0.55)
         cx = lerp(p_from[0], p_to[0], prog)
@@ -219,8 +241,8 @@ def compute_camera(
 
     # 7. Whip Pan (Swift motion-blur camera sweep)
     elif cam_type in ("whip_pan", "whip"):
-        whip_dur = cfg.duration or 0.24
-        prog = ease_out_cubic(min(1.0, age / whip_dur))
+        whip_dur = (cfg.duration or 0.24) / eff_speed
+        prog = ease_func(min(1.0, age / whip_dur))
         p_from = resolve_target_pos(cfg.pan_from, actor_positions) or (start_cx, start_cy)
         p_to = resolve_target_pos(cfg.pan_to, actor_positions) or (0.70, 0.55)
         cx = lerp(p_from[0], p_to[0], prog)
@@ -231,19 +253,20 @@ def compute_camera(
 
     # 8. Dutch Tilt (Dramatic angled camera with smooth tilt-in)
     elif cam_type in ("dutch_tilt", "dutch", "tilt"):
-        settle_dur = cfg.duration or 0.35
-        prog = ease_out_cubic(min(1.0, age / settle_dur))
+        settle_dur = (cfg.duration or 0.45) / eff_speed
+        prog = ease_func(min(1.0, age / settle_dur))
+        target_pos = resolve_target_pos(cfg.target, actor_positions) or (0.5, 0.5)
         target_roll = cfg.roll if cfg.roll != 0.0 else (-4.5 * eff_intensity)
         target_zoom = cfg.zoom if cfg.zoom != 1.0 else 1.05
         roll = lerp(start_roll, target_roll, prog)
         zoom = lerp(start_zoom, target_zoom, prog)
-        cx = lerp(start_cx, 0.5, prog)
-        cy = lerp(start_cy, 0.5, prog)
+        cx = lerp(start_cx, target_pos[0], prog)
+        cy = lerp(start_cy, target_pos[1], prog)
         state = CameraState(zoom=zoom, center_x=cx, center_y=cy, roll_deg=roll)
 
     # 9. Earthquake Rumble (Impact shake)
     elif cam_type in ("rumble", "shake"):
-        rumble_dur = cfg.duration or 0.35
+        rumble_dur = (cfg.duration or 0.35) / eff_speed
         if age < rumble_dur:
             decay = (1.0 - age / rumble_dur) ** 2
             sx = math.sin(age * 55.0) * 14.0 * decay * eff_intensity
@@ -269,10 +292,12 @@ def compute_camera(
         state = CameraState(zoom=1.0, center_x=0.5, center_y=0.5, roll_deg=cfg.roll)
 
     # Reactive Character Coupling: Camera shivers/bobs in lockstep with actor
+    # Uses smooth envelope fade-in (0.40s) so shake does not spike/shock at frame 0
     if cfg.reactive_actor and actor_motions and cfg.reactive_actor in actor_motions:
         drift_x, bob_px = actor_motions[cfg.reactive_actor]
-        state.shake_x += drift_x * cfg.reactive_factor
-        state.shake_y += bob_px * cfg.reactive_factor
+        shake_env = ease_smooth(min(1.0, age / 0.40))
+        state.shake_x += drift_x * cfg.reactive_factor * shake_env
+        state.shake_y += bob_px * cfg.reactive_factor * shake_env
 
     return state
 

@@ -99,12 +99,14 @@ class CameraConfig:
     zoom: float = 1.0                         # target zoom factor (>1.0 = zoom in)
     zoom_start: float | None = None           # starting zoom factor (if interpolating)
     intensity: float = 1.0                    # movement/shake intensity multiplier
+    speed: float = 1.0                        # camera move speed multiplier (lower = slower/gentler, e.g. 0.5 = 2x slower)
+    ease: str = "smooth"                      # "smooth" (zero-jerk smootherstep), "in_out", "linear", "snappy"
     roll: float = 0.0                         # Dutch tilt angle in degrees
     pan_from: str | list | tuple | None = None # starting camera center [x, y]
     pan_to: str | list | tuple | None = None   # ending camera center [x, y]
     reactive_actor: str = ""                  # character name to sync camera motion/shake with
     reactive_factor: float = 0.5              # coupling strength (0.0 to 1.0)
-    duration: float | None = None             # movement duration in seconds (None = beat_dur)
+    duration: float | None = None             # movement duration in seconds (None = beat_dur / speed)
 
 
 @dataclass
@@ -151,6 +153,8 @@ class StoryBeat:
                 zoom            = float(self.camera.get("zoom", 1.0)),
                 zoom_start      = float(self.camera["zoom_start"]) if "zoom_start" in self.camera else None,
                 intensity       = float(self.camera.get("intensity", self.camera_intensity)),
+                speed           = float(self.camera.get("speed", 1.0)),
+                ease            = str(self.camera.get("ease", "smooth")),
                 roll            = float(self.camera.get("roll", 0.0)),
                 pan_from        = self.camera.get("pan_from"),
                 pan_to          = self.camera.get("pan_to"),

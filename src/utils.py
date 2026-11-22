@@ -128,6 +128,18 @@ def ease_out_cubic(t: float) -> float:
     return 1 - (1 - t) ** 3
 
 
+def ease_smooth(t: float) -> float:
+    """Quintic smootherstep — zero velocity and zero acceleration at start and end."""
+    t = max(0.0, min(1.0, t))
+    return t * t * t * (t * (t * 6.0 - 15.0) + 10.0)
+
+
+def ease_in_out(t: float) -> float:
+    """Cubic ease in-out with zero start and end velocity."""
+    t = max(0.0, min(1.0, t))
+    return t * t * (3.0 - 2.0 * t)
+
+
 def ease_out_back(t: float) -> float:
     """Spring overshoot — punchy scale pop."""
     c1, c3 = 1.30, 2.30
