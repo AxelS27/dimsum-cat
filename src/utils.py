@@ -14,8 +14,8 @@ _EMOJI_RE = re.compile(
     "[\U0001F300-\U0001FAFF"   # misc symbols, transport, supplemental, chess
     "\U00002600-\U000027BF"    # misc symbols, dingbats
     "\U0000FE00-\U0000FE0F"    # variation selectors
-    "\U00002702-\U000027B0"    # dingbats (subset)
-    "\U000024C2-\U0001F251"    # enclosed chars
+    "\U000024C2"                # circled M
+    "\U0001F100-\U0001F251"    # enclosed alphanumeric / ideographic supplement
     "]+",
     flags=re.UNICODE,
 )

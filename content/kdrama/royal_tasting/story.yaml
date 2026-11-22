@@ -1,0 +1,189 @@
+# ==============================================================================
+# DIMsum Cat — Multi-Actor Staging & Kawaii VFX Showcase
+# ==============================================================================
+# Starring: DIMsum Cat & King Tae-ho
+# Demonstrates:
+# - Multi-actor staging (2 characters simultaneously interacting on screen)
+# - Dynamic contact/ground shadows
+# - Procedural Kawaii VFX (sparkles, sweat_drops, floating_hearts)
+# - Camera punch zooms and motion physics
+
+title: "King Tae-ho's Royal Tasting"
+description: >
+  DIMsum Cat serves a top-secret royal dish to King Tae-ho! 🐯🍲🐱
+  Will the royal palate approve?
+
+  #dimsumcat #taeho #chibi #kdrama #animation #cute #kawaii #fyp #viral
+
+# --- Stage & Audio Specs ---
+fps: 24
+width: 1080
+height: 1920
+duration: 12.0
+bg: "#fdf8f4"
+bg_image: "../../../assets/background/dining_hall.png"
+character: "dimsum_cat"
+default_animation: "normal_talk"
+
+tts: false
+bg_music: "../../../assets/music/yummy_flavor.mp3"
+bg_music_start: "00:00"
+bg_volume: 0.85
+
+watermark: ""
+pinned_comment: "Did King Tae-ho give it 5 stars? ⭐⭐⭐⭐⭐"
+
+# ==============================================================================
+# Beats Timeline (Multi-Actor Staged)
+# ==============================================================================
+
+beats:
+  # Beat 1: DIMsum Cat serves the dish to King Tae-ho
+  - time: 0.00
+    text: "폐하, 오늘의 특선 요리입니다!"
+    sub: "Your Majesty, today's royal special!"
+    rich_text:
+      - text: "폐하, "
+        color: "#d97706"
+      - text: "오늘의 특선 요리입니다!"
+        color: "#2a2a2a"
+    text_size: "big"
+    camera: "slow_zoom_in"
+    camera_intensity: 0.5
+    transition: "dip_black"
+    transition_dur: 0.30
+    vfx:
+      - type: "sparkles"
+        intensity: 1.0
+    actors:
+      # King Tae-ho seated regally on the left
+      - character: "taeho"
+        animation: "neutral_regal"
+        pos: [0.30, 0.68]
+        scale: 1.25
+        flip_x: false
+        motion: "breathe"
+        motion_speed: 0.8
+        ground_shadow: true
+        z_index: 0
+      # DIMsum Cat presenting her dish on the right (facing Tae-ho)
+      - character: "dimsum_cat"
+        animation: "cooking_present"
+        pos: [0.70, 0.69]
+        scale: 1.15
+        flip_x: true
+        motion: "squash_bounce"
+        motion_speed: 1.0
+        ground_shadow: true
+        z_index: 1
+
+  # Beat 2: Tae-ho takes a bite, DIMsum Cat sweats nervously!
+  - time: 3.00
+    text: "과연 폐하의 입맛에 맞을까...?"
+    sub: "Will it suit the royal palate...?"
+    rich_text:
+      - text: "과연 폐하의 "
+        color: "#2a2a2a"
+      - text: "입맛에 맞을까...?"
+        color: "#0284c7"
+    text_size: "big"
+    camera: "slow_zoom_in"
+    camera_intensity: 0.8
+    vfx:
+      - type: "sweat_drops"
+    actors:
+      # Tae-ho taking first bite
+      - character: "taeho"
+        animation: "first_bite"
+        pos: [0.30, 0.68]
+        scale: 1.25
+        flip_x: false
+        motion: "breathe"
+        ground_shadow: true
+        z_index: 0
+      # DIMsum Cat sweating in suspense
+      - character: "dimsum_cat"
+        animation: "nervous_sweat"
+        pos: [0.70, 0.69]
+        scale: 1.15
+        flip_x: true
+        motion: "shiver_rumble"
+        motion_intensity: 1.2
+        ground_shadow: true
+        z_index: 1
+
+  # Beat 3: Tae-ho is OVERJOYED! Camera punch & floating hearts!
+  - time: 6.00
+    text: "천상의 맛이다!! 너무 맛있어!"
+    sub: "A taste of heaven!! Absolutely delicious!"
+    rich_text:
+      - text: "천상의 맛이다!! "
+        color: "#ea580c"
+      - text: "너무 맛있어!"
+        color: "#dc2626"
+    text_size: "huge"
+    camera: "zoom_punch"
+    camera_intensity: 1.2
+    transition: "crossfade"
+    transition_dur: 0.20
+    vfx:
+      - type: "floating_hearts"
+        intensity: 1.2
+      - type: "sparkles"
+        intensity: 0.8
+    actors:
+      # Tae-ho overjoyed eating
+      - character: "taeho"
+        animation: "overjoyed_eating"
+        pos: [0.30, 0.67]
+        scale: 1.35
+        flip_x: false
+        motion: "squash_bounce"
+        motion_speed: 1.4
+        ground_shadow: true
+        z_index: 0
+      # DIMsum Cat cheering proudly
+      - character: "dimsum_cat"
+        animation: "proud"
+        pos: [0.72, 0.68]
+        scale: 1.18
+        flip_x: true
+        motion: "anticipate_hop"
+        motion_speed: 1.2
+        ground_shadow: true
+        z_index: 1
+
+  # Beat 4: Tae-ho begs for more, DIMsum Cat sends finger hearts
+  - time: 9.00
+    text: "사랑을 담아 만들었어요~"
+    sub: "Crafted with pure royal love~"
+    rich_text:
+      - text: "사랑을 담아 "
+        color: "#ec4899"
+      - text: "만들었어요~"
+        color: "#f43f5e"
+    text_size: "big"
+    camera: "sway"
+    camera_intensity: 0.8
+    vfx:
+      - type: "floating_hearts"
+        intensity: 1.5
+    actors:
+      # Tae-ho begging for another bowl
+      - character: "taeho"
+        animation: "more_please"
+        pos: [0.30, 0.68]
+        scale: 1.30
+        flip_x: false
+        motion: "squash_bounce"
+        ground_shadow: true
+        z_index: 0
+      # DIMsum Cat giving cute finger heart
+      - character: "dimsum_cat"
+        animation: "finger_heart"
+        pos: [0.72, 0.68]
+        scale: 1.18
+        flip_x: true
+        motion: "float_sine"
+        ground_shadow: true
+        z_index: 1

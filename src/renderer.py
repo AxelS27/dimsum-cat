@@ -6,6 +6,7 @@ from typing import Iterator
 from PIL import Image, ImageDraw, ImageFilter
 
 from src.models import (
+    ActorConfig,
     RenderConfig,
     RichTextSpan,
     StoryBeat,
@@ -28,6 +29,7 @@ from src.utils import (
 from src.sprite import organic, make_sprite_schedule, load_frames
 from src.motion import resolve_motion_name, compute_motion
 from src.camera import compute_camera, apply_transition
+from src.vfx import render_vfx_layer
 
 
 # ---------------------------------------------------------------------------
@@ -287,23 +289,30 @@ def iter_video_frames(
     frame_end = total_frames if frame_end is None else min(frame_end, total_frames)
     w_scale = config.width / 720
 
-    # Pre-load all animations referenced in beats, keyed by (character, animation)
-    def _char(beat: "StoryBeat") -> str:
-        return beat.character or config.default_character
-
+    # Pre-load all animations referenced in beats/actors, keyed by (character, animation)
     anim_keys: set[tuple[str, str]] = {(config.default_character, config.default_animation)}
     for b in config.beats:
-        if b.animation:
-            anim_keys.add((_char(b), b.animation))
-    anim_cache: dict[tuple[str, str], tuple[list[Image.Image], tuple[int, int]]] = {
-        (ch, name): load_frames(name, character=ch) for ch, name in anim_keys
-    }
+        for a in b.get_actors(config.default_character, config.default_animation):
+            ch = a.character or config.default_character
+            anim = a.animation or config.default_animation
+            if anim:
+                anim_keys.add((ch, anim))
 
-    # Sort and ensure a beat at t=0 — use first beat's pos/scale so cat
-    # doesn't jump position when the first real beat starts.
+    anim_cache: dict[tuple[str, str], tuple[list[Image.Image], tuple[int, int]]] = {}
+    for ch, name in anim_keys:
+        try:
+            anim_cache[(ch, name)] = load_frames(name, character=ch)
+        except Exception as e:
+            if (config.default_character, config.default_animation) in anim_cache:
+                anim_cache[(ch, name)] = anim_cache[(config.default_character, config.default_animation)]
+            else:
+                anim_cache[(ch, name)] = load_frames(config.default_animation, character=config.default_character)
+
+    # Sort and ensure a beat at t=0
     beats = sorted(config.beats, key=lambda b: b.time)
     if not beats or beats[0].time > 0:
         first = beats[0] if beats else None
+        first_actors = first.get_actors(config.default_character, config.default_animation) if first else []
         beats.insert(0, StoryBeat(
             time=0, text="",
             animation=config.default_animation,
@@ -311,6 +320,7 @@ def iter_video_frames(
             scale=first.scale if first else 1.0,
             bg_image=first.bg_image if first else "",
             character=first.character if first else "",
+            actors=first_actors,
         ))
 
     # Pre-compute irregular sprite schedule per (character, animation)
@@ -344,9 +354,6 @@ def iter_video_frames(
         arr[:, :, 3] *= 0.48          # 48% opacity — readable but not distracting
         wm_img = Image.fromarray(arr.astype(np.uint8), "RGBA")
 
-    TRANS   = 0.24   # character position/scale ease duration
-    FADE_IN = 0.10   # text fade-in duration
-
     def beat_at(t: float) -> tuple[int, StoryBeat]:
         idx = 0
         for i, b in enumerate(beats):
@@ -354,40 +361,12 @@ def iter_video_frames(
                 idx = i
         return idx, beats[idx]
 
-    def anim_at(beat_idx: int) -> tuple[str, str]:
-        """Return (character, animation) — walk backward to find the last beat with an animation set."""
-        for i in range(beat_idx, -1, -1):
-            if beats[i].animation:
-                char = beats[i].character or config.default_character
-                return char, beats[i].animation
-        return config.default_character, config.default_animation
+    ENTRANCE_DUR = 0.35
 
     for idx in range(frame_start, frame_end):
         t = idx / config.fps
         beat_idx, beat = beat_at(t)
         age = t - beat.time
-
-        # --- Sprite frame from pre-computed irregular schedule ---
-        anim_char, anim_name     = anim_at(beat_idx)
-        cache_key                = (anim_char, anim_name)
-        sprite_frames, orig_size = anim_cache[cache_key]
-        sprite                   = sprite_frames[sprite_schedules[cache_key][idx]].copy()
-        orig_w, orig_h           = orig_size
-
-        # --- Character position / scale with bouncy entrance pop-in ---
-        target_cx, target_cy = resolve_pos(beat.pos)
-        target_scale = beat.scale
-
-        ENTRANCE_DUR = 0.35
-        if age < ENTRANCE_DUR:
-            prog = age / ENTRANCE_DUR
-            spring = ease_out_back(prog)
-            char_scale = target_scale * (0.60 + 0.40 * spring)
-            rise = (1.0 - ease_out_cubic(prog)) * 0.07
-            char_cy = target_cy + rise
-            char_cx = target_cx
-        else:
-            char_cx, char_cy, char_scale = target_cx, target_cy, target_scale
 
         # ----------------------------------------------------------------
         # Beat Duration & Virtual Camera
@@ -402,26 +381,6 @@ def iter_video_frames(
         cam = compute_camera(cam_preset, age=age, beat_dur=beat_dur, intensity=cam_intensity)
 
         # ----------------------------------------------------------------
-        # Modular Motion Physics & Behavior Presets
-        # ----------------------------------------------------------------
-        motion_preset = getattr(beat, "motion", "") or resolve_motion_name(anim_name, anim_char)
-        motion_state = compute_motion(
-            motion_preset,
-            t=t,
-            age=age,
-            w_scale=w_scale,
-            speed=getattr(beat, "motion_speed", 1.0),
-            intensity=getattr(beat, "motion_intensity", 1.0),
-        )
-        bob_px = motion_state.bob_px
-        char_cx += (motion_state.drift_x + cam.shake_x) / config.width + cam.pan_x
-        char_cy += (cam.shake_y / config.height) + cam.pan_y
-        rot_deg = motion_state.rot_deg + cam.roll_deg
-        char_scale *= motion_state.scale_mult * cam.zoom
-        sq_x = motion_state.sq_x
-        sq_y = motion_state.sq_y
-
-        # ----------------------------------------------------------------
         # Compose Background with Virtual Camera
         # ----------------------------------------------------------------
         active_bg_image = beat.bg_image or config.bg_image
@@ -432,29 +391,13 @@ def iter_video_frames(
             shake_x=cam.shake_x, shake_y=cam.shake_y,
         )
 
-        # Scene Transitions (Flash bloom, crossfade, circle wipe)
+        # Scene Transitions (Flash bloom, crossfade, circle wipe, dip_black)
         trans_type = getattr(beat, "transition", "") or ("flash" if beat_idx > 0 else "none")
         trans_dur = getattr(beat, "transition_dur", 0.22)
         if trans_type != "none" and age < trans_dur:
             canvas = apply_transition(canvas, None, trans_type, age, duration=trans_dur)
 
-        # Text — bouncy pop-in spring entrance per beat
-        TEXT_ENTRANCE = 0.28
-        if age < TEXT_ENTRANCE:
-            prog = age / TEXT_ENTRANCE
-            spring = ease_out_back(prog)
-            text_y_offset = int((1.0 - spring) * -22.0 * w_scale)
-            text_alpha = min(255, int(255 * (prog ** 0.8))) if beat_idx > 0 else 255
-        else:
-            text_y_offset = 0
-            text_alpha = 255
-        draw_text_overlay(
-            canvas, beat.text, beat.sub, beat.text_size,
-            text_alpha, w_scale, beat.rich_text, beat.rich_text_sub,
-            y_offset=text_y_offset,
-        )
-
-        # Accessories — composited BEFORE character so cat is always front layer
+        # Accessories — composited BEFORE characters
         from pathlib import Path as _APath
         for acc in beat.accessories:
             ap = _APath(acc.image)
@@ -489,7 +432,7 @@ def iter_video_frames(
             acc_pos = POSITIONS.get(acc.pos) if acc.pos in POSITIONS else None
             if acc_pos is None:
                 try:
-                    parts = acc.pos.split(",")
+                    parts = str(acc.pos).split(",")
                     acc_pos = (float(parts[0]), float(parts[1]))
                 except Exception:
                     acc_pos = (0.5, 0.5)
@@ -500,42 +443,139 @@ def iter_video_frames(
             if ax1 > ax0 and ay1 > ay0:
                 canvas.alpha_composite(acc_img.crop((ax0, ay0, ax1, ay1)), (max(0, ax), max(0, ay)))
 
-        # Resize so the cat *body* (excluding padding) renders at 62% of
-        # canvas width × char_scale.  The pre-upscaled sprite is padded_size×4,
-        # so we scale relative to orig_size×4 — this is nearly always a
-        # downscale from the pre-upscaled image, keeping edges sharp.
-        target_cat_w = config.width * 0.62 * char_scale
-        sf = target_cat_w / (orig_w * SPRITE_UPSCALE)
+        # ----------------------------------------------------------------
+        # Multi-Actor Staging & Ground Shadows
+        # ----------------------------------------------------------------
+        actors = beat.get_actors(config.default_character, config.default_animation)
+        sorted_actors = sorted(actors, key=lambda a: a.z_index)
+        actor_anchors: list[tuple[float, float]] = []
 
-        new_w = max(1, int(sprite.width  * sf * sq_x))
-        new_h = max(1, int(sprite.height * sf * sq_y))
-        sprite = sprite.resize((new_w, new_h), Image.Resampling.LANCZOS)
+        for actor in sorted_actors:
+            act_char = actor.character or config.default_character
+            act_anim = actor.animation or config.default_animation
+            cache_key = (act_char, act_anim)
+            if cache_key not in anim_cache:
+                anim_cache[cache_key] = load_frames(act_anim, character=act_char)
+                sprite_schedules[cache_key] = make_sprite_schedule(total_frames, config.fps, len(anim_cache[cache_key][0]))
 
-        # Flip character horizontally if requested
-        if beat.flip_x:
-            sprite = sprite.transpose(Image.Transpose.FLIP_LEFT_RIGHT)
+            sprite_frames, orig_size = anim_cache[cache_key]
+            schedule = sprite_schedules[cache_key]
+            sprite = sprite_frames[schedule[idx % len(schedule)]].copy()
+            orig_w, orig_h = orig_size
 
-        # Rotate after resize — organic + any per-beat offset
-        total_rot = rot_deg + beat.cat_rotate
-        if abs(total_rot) > 0.3:
-            sprite = sprite.rotate(total_rot, expand=True, resample=Image.Resampling.BICUBIC)
+            # Target position and scale
+            target_cx, target_cy = resolve_pos(actor.pos)
+            target_scale = actor.scale
 
-        # Position without clamping — let the padding absorb any edge effects.
-        # Composite only the visible portion so we never shift the cat's anchor.
-        sx = int(config.width  * char_cx - sprite.width  // 2)
-        sy = int(config.height * char_cy - sprite.height // 2 + bob_px)
-        # Clamp so the sprite never overlaps the subtitle text zone (top ~30% of canvas)
-        sy = max(int(config.height * 0.30), sy)
+            if age < ENTRANCE_DUR:
+                prog = age / ENTRANCE_DUR
+                spring = ease_out_back(prog)
+                char_scale = target_scale * (0.60 + 0.40 * spring)
+                rise = (1.0 - ease_out_cubic(prog)) * 0.07
+                char_cy = target_cy + rise
+                char_cx = target_cx
+            else:
+                char_cx, char_cy, char_scale = target_cx, target_cy, target_scale
 
-        src_x0 = max(0, -sx);  src_x1 = min(sprite.width,  config.width  - sx)
-        src_y0 = max(0, -sy);  src_y1 = min(sprite.height, config.height - sy)
-
-        if src_x1 > src_x0 and src_y1 > src_y0:
-            canvas.alpha_composite(
-                sprite.crop((src_x0, src_y0, src_x1, src_y1)),
-                (max(0, sx), max(0, sy)),
+            # Motion behavior physics
+            motion_preset = actor.motion or resolve_motion_name(act_anim, act_char)
+            motion_state = compute_motion(
+                motion_preset,
+                t=t,
+                age=age,
+                w_scale=w_scale,
+                speed=actor.motion_speed,
+                intensity=actor.motion_intensity,
             )
+            bob_px = motion_state.bob_px
+            char_cx += (motion_state.drift_x + cam.shake_x) / config.width + cam.pan_x
+            char_cy += (cam.shake_y / config.height) + cam.pan_y
+            rot_deg = motion_state.rot_deg + cam.roll_deg + actor.rotate
+            char_scale *= motion_state.scale_mult * cam.zoom
+            sq_x = motion_state.sq_x
+            sq_y = motion_state.sq_y
 
+            # Sprite scaling
+            target_cat_w = config.width * 0.62 * char_scale
+            sf = target_cat_w / (orig_w * SPRITE_UPSCALE)
+            new_w = max(1, int(sprite.width  * sf * sq_x))
+            new_h = max(1, int(sprite.height * sf * sq_y))
+            sprite = sprite.resize((new_w, new_h), Image.Resampling.LANCZOS)
+
+            # Flip character horizontally
+            if actor.flip_x:
+                sprite = sprite.transpose(Image.Transpose.FLIP_LEFT_RIGHT)
+
+            # Rotate
+            if abs(rot_deg) > 0.3:
+                sprite = sprite.rotate(rot_deg, expand=True, resample=Image.Resampling.BICUBIC)
+
+            # Anchor coordinates
+            sx = int(config.width  * char_cx - sprite.width  // 2)
+            sy = int(config.height * char_cy - sprite.height // 2 + bob_px)
+            sy = max(int(config.height * 0.28), sy)
+
+            # Contact / Ground Shadow
+            if actor.ground_shadow:
+                ground_y = int(config.height * char_cy + sprite.height // 2 - int(24 * w_scale))
+                jump_px = max(0.0, -bob_px)
+                jump_factor = 1.0 / (1.0 + jump_px / (45.0 * w_scale))
+                sh_w = int(sprite.width * 0.58 * sq_x * jump_factor)
+                sh_h = max(4, int(sh_w * 0.24 * sq_y * jump_factor))
+                sh_alpha = int(75 * jump_factor)
+                if sh_w > 8 and sh_h > 2 and sh_alpha > 5:
+                    sh_img = Image.new("RGBA", (config.width, config.height), (0, 0, 0, 0))
+                    sh_draw = ImageDraw.Draw(sh_img)
+                    sh_cx = int(config.width * char_cx)
+                    sh_draw.ellipse(
+                        [sh_cx - sh_w // 2, ground_y - sh_h // 2, sh_cx + sh_w // 2, ground_y + sh_h // 2],
+                        fill=(20, 25, 35, sh_alpha),
+                    )
+                    sh_img = sh_img.filter(ImageFilter.GaussianBlur(radius=int(6 * w_scale)))
+                    canvas.alpha_composite(sh_img)
+
+            # Composite character sprite
+            src_x0 = max(0, -sx);  src_x1 = min(sprite.width,  config.width  - sx)
+            src_y0 = max(0, -sy);  src_y1 = min(sprite.height, config.height - sy)
+            if src_x1 > src_x0 and src_y1 > src_y0:
+                canvas.alpha_composite(
+                    sprite.crop((src_x0, src_y0, src_x1, src_y1)),
+                    (max(0, sx), max(0, sy)),
+                )
+
+            actor_anchors.append((config.width * char_cx, config.height * char_cy))
+
+        # ----------------------------------------------------------------
+        # Kawaii VFX Particle Overlay
+        # ----------------------------------------------------------------
+        if beat.vfx:
+            vfx_img = render_vfx_layer(
+                (config.width, config.height),
+                beat.vfx,
+                t=t,
+                age=age,
+                anchor_positions=actor_anchors,
+                w_scale=w_scale,
+            )
+            canvas.alpha_composite(vfx_img)
+
+        # ----------------------------------------------------------------
+        # Speech Bubble / Text Overlay
+        # ----------------------------------------------------------------
+        TEXT_ENTRANCE = 0.28
+        if age < TEXT_ENTRANCE:
+            prog = age / TEXT_ENTRANCE
+            spring = ease_out_back(prog)
+            text_y_offset = int((1.0 - spring) * -22.0 * w_scale)
+            text_alpha = min(255, int(255 * (prog ** 0.8))) if beat_idx > 0 else 255
+        else:
+            text_y_offset = 0
+            text_alpha = 255
+        draw_text_overlay(
+            canvas, beat.text, beat.sub, beat.text_size,
+            text_alpha, w_scale, beat.rich_text, beat.rich_text_sub,
+            y_offset=text_y_offset,
+        )
 
         # PNG watermark — centred near bottom
         if wm_img is not None:
