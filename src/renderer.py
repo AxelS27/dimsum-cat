@@ -27,6 +27,7 @@ from src.utils import (
 )
 from src.sprite import organic, make_sprite_schedule, load_frames
 from src.motion import resolve_motion_name, compute_motion
+from src.camera import compute_camera, apply_transition
 
 
 # ---------------------------------------------------------------------------
@@ -41,21 +42,50 @@ def make_background(
     bg_hex: str,
     bg_image: str = "",
     story_dir: "Path | None" = None,
+    zoom: float = 1.0,
+    pan_x: float = 0.0,
+    pan_y: float = 0.0,
+    shake_x: float = 0.0,
+    shake_y: float = 0.0,
 ) -> Image.Image:
-    """Return background canvas — image if bg_image is set, else solid pastel."""
+    """Return background canvas with camera zoom, pan, and rumble."""
     if bg_image:
         from pathlib import Path
         from src.models import ROOT
         p = Path(bg_image)
         if not p.is_absolute():
             p = (story_dir / bg_image) if story_dir else (ROOT / bg_image)
-        cache_key = str(p) + str(size)
-        if cache_key not in _BG_IMAGE_CACHE:
+
+        # Cache oversized base (15% larger) so camera zoom/pan/shake crops cleanly without borders
+        ov_w, ov_h = int(size[0] * 1.15), int(size[1] * 1.15)
+        cache_key_ov = f"{p}_ov_{ov_w}x{ov_h}"
+        if cache_key_ov not in _BG_IMAGE_CACHE:
             img = Image.open(p).convert("RGBA")
-            if img.size != size:
-                img = img.resize(size, Image.Resampling.LANCZOS)
-            _BG_IMAGE_CACHE[cache_key] = img
-        return _BG_IMAGE_CACHE[cache_key].copy()
+            if img.size != (ov_w, ov_h):
+                img = img.resize((ov_w, ov_h), Image.Resampling.LANCZOS)
+            _BG_IMAGE_CACHE[cache_key_ov] = img
+
+        base_ov = _BG_IMAGE_CACHE[cache_key_ov]
+
+        if abs(zoom - 1.0) < 0.005 and abs(pan_x) < 0.001 and abs(pan_y) < 0.001 and abs(shake_x) < 0.5 and abs(shake_y) < 0.5:
+            x0 = (ov_w - size[0]) // 2
+            y0 = (ov_h - size[1]) // 2
+            return base_ov.crop((x0, y0, x0 + size[0], y0 + size[1])).copy()
+
+        # Camera transformed crop
+        clamped_zoom = max(0.85, min(1.25, zoom))
+        view_w = max(100, min(ov_w, int(size[0] / clamped_zoom)))
+        view_h = max(100, min(ov_h, int(size[1] / clamped_zoom)))
+
+        cx = ov_w / 2.0 + (pan_x * size[0]) + shake_x
+        cy = ov_h / 2.0 + (pan_y * size[1]) + shake_y
+        x0 = max(0, min(ov_w - view_w, int(cx - view_w / 2.0)))
+        y0 = max(0, min(ov_h - view_h, int(cy - view_h / 2.0)))
+
+        cropped = base_ov.crop((x0, y0, x0 + view_w, y0 + view_h))
+        if cropped.size != size:
+            return cropped.resize(size, Image.Resampling.BILINEAR)
+        return cropped
 
     cache_key = f"solid:{size[0]}x{size[1]}:{bg_hex}"
     if cache_key in _BG_IMAGE_CACHE:
@@ -360,6 +390,18 @@ def iter_video_frames(
             char_cx, char_cy, char_scale = target_cx, target_cy, target_scale
 
         # ----------------------------------------------------------------
+        # Beat Duration & Virtual Camera
+        # ----------------------------------------------------------------
+        if beat_idx + 1 < len(beats):
+            beat_dur = max(0.1, beats[beat_idx + 1].time - beat.time)
+        else:
+            beat_dur = max(0.1, config.duration - beat.time)
+
+        cam_preset = getattr(beat, "camera", "") or ("zoom_punch" if beat_idx > 0 else "static")
+        cam_intensity = getattr(beat, "camera_intensity", 1.0)
+        cam = compute_camera(cam_preset, age=age, beat_dur=beat_dur, intensity=cam_intensity)
+
+        # ----------------------------------------------------------------
         # Modular Motion Physics & Behavior Presets
         # ----------------------------------------------------------------
         motion_preset = getattr(beat, "motion", "") or resolve_motion_name(anim_name, anim_char)
@@ -372,18 +414,29 @@ def iter_video_frames(
             intensity=getattr(beat, "motion_intensity", 1.0),
         )
         bob_px = motion_state.bob_px
-        char_cx += motion_state.drift_x / config.width
-        rot_deg = motion_state.rot_deg
-        char_scale *= motion_state.scale_mult
+        char_cx += (motion_state.drift_x + cam.shake_x) / config.width + cam.pan_x
+        char_cy += (cam.shake_y / config.height) + cam.pan_y
+        rot_deg = motion_state.rot_deg + cam.roll_deg
+        char_scale *= motion_state.scale_mult * cam.zoom
         sq_x = motion_state.sq_x
         sq_y = motion_state.sq_y
 
         # ----------------------------------------------------------------
-        # Compose frame
+        # Compose Background with Virtual Camera
         # ----------------------------------------------------------------
         active_bg_image = beat.bg_image or config.bg_image
-        canvas = make_background((config.width, config.height), config.bg,
-                                  bg_image=active_bg_image, story_dir=config.story_dir)
+        canvas = make_background(
+            (config.width, config.height), config.bg,
+            bg_image=active_bg_image, story_dir=config.story_dir,
+            zoom=cam.zoom, pan_x=cam.pan_x, pan_y=cam.pan_y,
+            shake_x=cam.shake_x, shake_y=cam.shake_y,
+        )
+
+        # Scene Transitions (Flash bloom, crossfade, circle wipe)
+        trans_type = getattr(beat, "transition", "") or ("flash" if beat_idx > 0 else "none")
+        trans_dur = getattr(beat, "transition_dur", 0.22)
+        if trans_type != "none" and age < trans_dur:
+            canvas = apply_transition(canvas, None, trans_type, age, duration=trans_dur)
 
         # Text — bouncy pop-in spring entrance per beat
         TEXT_ENTRANCE = 0.28

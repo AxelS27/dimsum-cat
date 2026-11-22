@@ -100,6 +100,10 @@ class StoryBeat:
     motion: str = ""                       # motion behavior preset name ("heavy_bounce", "float_gentle", etc.)
     motion_speed: float = 1.0              # speed multiplier for motion physics
     motion_intensity: float = 1.0          # intensity/amplitude multiplier for motion physics
+    camera: str = ""                       # virtual camera preset ("zoom_punch", "slow_zoom_in", "rumble", "sway", "static")
+    camera_intensity: float = 1.0          # strength of camera movement/shake
+    transition: str = ""                   # scene transition ("flash", "crossfade", "circle_wipe", "dip_black", "none")
+    transition_dur: float = 0.22           # duration of scene transition in seconds
 
 
 @dataclass

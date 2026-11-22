@@ -147,6 +147,10 @@ def main() -> None:
             motion        = b.get("motion", ""),
             motion_speed  = float(b.get("motion_speed", 1.0)),
             motion_intensity = float(b.get("motion_intensity", 1.0)),
+            camera        = b.get("camera", ""),
+            camera_intensity = float(b.get("camera_intensity", 1.0)),
+            transition    = b.get("transition", ""),
+            transition_dur = float(b.get("transition_dur", 0.22)),
         )
 
         beat_bg_raw = b.get("bg_image", "")
