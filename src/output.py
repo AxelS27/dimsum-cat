@@ -39,12 +39,21 @@ def stream_to_mp4(
     if description:
         metadata += ["-metadata", f"comment={description}"]
 
+    first_frame = next(frame_iterator, None)
+    if first_frame is None:
+        return
+    import itertools
+    all_frames = itertools.chain([first_frame], frame_iterator)
+
+    raw_mode = "RGBA" if first_frame.mode == "RGBA" else "RGB"
+    pix_fmt = "rgba" if raw_mode == "RGBA" else "rgb24"
+
     cmd = [
         ffmpeg, "-y",
         "-f", "rawvideo",
         "-vcodec", "rawvideo",
         "-s", f"{width}x{height}",
-        "-pix_fmt", "rgb24",
+        "-pix_fmt", pix_fmt,
         "-r", str(fps),
         "-i", "pipe:0",
         "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2",
@@ -66,8 +75,8 @@ def stream_to_mp4(
 
     frame_count = 0
     try:
-        for frame in frame_iterator:
-            raw_bytes = frame.tobytes("raw", "RGB")
+        for frame in all_frames:
+            raw_bytes = frame.tobytes("raw", raw_mode) if frame.mode == raw_mode else frame.convert(raw_mode).tobytes("raw", raw_mode)
             proc.stdin.write(raw_bytes)
             frame_count += 1
             if progress_callback:
@@ -156,48 +165,60 @@ def mux_audio_into_mp4(
     bg_music_start: str = "",
     bg_music_fade_in: float = 0.0,
     tts_volume: float = 1.4,
+    sfx_list: list[tuple[float, Path, float]] | None = None,
 ) -> None:
-    """Mux TTS audio (+ optional background music) into MP4 in-place.
+    """Mux TTS audio (+ optional background music and timed SFX) into MP4 in-place.
 
     bg_music loops automatically to match the video length.
     bg_volume controls the relative level of the background track (0–1).
     bg_music_start: "SS:cs" offset into the music file before looping.
+    sfx_list: list of (timestamp_seconds, sfx_file_path, volume)
     """
     ffmpeg = find_ffmpeg()
     tmp = mp4_path.with_suffix(".tmp.mp4")
 
+    input_args = ["-i", str(mp4_path), "-i", str(audio_path)]
+    filter_nodes = []
+    mix_nodes = []
+
+    is_silence = "_silence" in audio_path.name
+    if not is_silence:
+        filter_nodes.append(f"[1]volume={tts_volume}[tts]")
+        mix_nodes.append("[tts]")
+
+    next_idx = 2
     if bg_music and bg_music.exists():
         start_sec = _parse_music_start(bg_music_start)
         ss_args = ["-ss", f"{start_sec:.3f}"] if start_sec > 0 else []
-        bgm_filter = f"[2]volume={bg_volume}"
+        input_args.extend(["-stream_loop", "-1", *ss_args, "-i", str(bg_music)])
+        bgm_filt = f"[{next_idx}]volume={bg_volume}"
         if bg_music_fade_in > 0:
-            bgm_filter += f",afade=t=in:st=0:d={bg_music_fade_in}"
-        # stream_loop -1 loops the music file indefinitely;
-        # -shortest stops everything when the video ends.
-        # TTS track is boosted slightly; bgm sits quietly underneath.
-        result = subprocess.run(
-            [ffmpeg, "-y",
-             "-i", str(mp4_path),
-             "-i", str(audio_path),
-             "-stream_loop", "-1", *ss_args, "-i", str(bg_music),
-             "-filter_complex",
-             f"[1]volume={tts_volume}[tts];{bgm_filter}[bgm];"
-             "[tts][bgm]amix=inputs=2:normalize=0:dropout_transition=0[aout]",
-             "-map", "0:v", "-map", "[aout]",
-             "-c:v", "copy", "-c:a", "aac", "-b:a", "128k", "-shortest",
-             str(tmp)],
-            stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-        )
-    else:
-        result = subprocess.run(
-            [ffmpeg, "-y",
-             "-i", str(mp4_path),
-             "-i", str(audio_path),
-             "-c:v", "copy", "-c:a", "aac", "-b:a", "128k", "-shortest",
-             str(tmp)],
-            stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-        )
+            bgm_filt += f",afade=t=in:st=0:d={bg_music_fade_in}"
+        bgm_filt += "[bgm]"
+        filter_nodes.append(bgm_filt)
+        mix_nodes.append("[bgm]")
+        next_idx += 1
 
+    if sfx_list:
+        for i, (t_sec, sfx_p, vol) in enumerate(sfx_list):
+            if sfx_p and sfx_p.exists():
+                input_args.extend(["-i", str(sfx_p)])
+                delay_ms = max(0, int(t_sec * 1000))
+                sfx_node = f"[sfx_{i}]"
+                filter_nodes.append(f"[{next_idx}]adelay={delay_ms}|{delay_ms},volume={vol}{sfx_node}")
+                mix_nodes.append(sfx_node)
+                next_idx += 1
+
+    if len(mix_nodes) == 1:
+        fc = ";".join(filter_nodes) + f";{mix_nodes[0]}anull[aout]"
+        cmd = [ffmpeg, "-y", *input_args, "-filter_complex", fc, "-map", "0:v", "-map", "[aout]", "-c:v", "copy", "-c:a", "aac", "-b:a", "128k", "-shortest", str(tmp)]
+    elif len(mix_nodes) > 1:
+        fc = ";".join(filter_nodes) + f";{''.join(mix_nodes)}amix=inputs={len(mix_nodes)}:normalize=0:dropout_transition=0[aout]"
+        cmd = [ffmpeg, "-y", *input_args, "-filter_complex", fc, "-map", "0:v", "-map", "[aout]", "-c:v", "copy", "-c:a", "aac", "-b:a", "128k", "-shortest", str(tmp)]
+    else:
+        cmd = [ffmpeg, "-y", *input_args, "-c:v", "copy", "-c:a", "aac", "-b:a", "128k", "-shortest", str(tmp)]
+
+    result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     if result.returncode != 0:
         raise RuntimeError(f"ffmpeg mux failed:\n{result.stderr.decode()}")
     tmp.replace(mp4_path)

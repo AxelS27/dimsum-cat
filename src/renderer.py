@@ -122,17 +122,32 @@ def _parse_hex_color(value: str, fallback: tuple[int, int, int]) -> tuple[int, i
         return fallback
 
 
+def _rich_space_width(draw: ImageDraw.ImageDraw, font, stroke_w: int = 7) -> int:
+    """Calculates clean, natural space width between words matching standard typography."""
+    return int(draw.textlength(" ", font=font))
+
+
+def _flatten_spans_to_words(spans: list[RichTextSpan]) -> list[RichTextSpan]:
+    """Convert spans into clean individual words preserving color."""
+    words: list[RichTextSpan] = []
+    for s in spans:
+        for w in str(s.text).strip().split():
+            if w:
+                words.append(RichTextSpan(text=w, color=s.color))
+    return words
+
+
 def _measure_rich_line(
     draw: ImageDraw.ImageDraw,
-    spans: list[RichTextSpan],
+    words: list[RichTextSpan],
     font,
+    stroke_w: int = 7,
 ) -> tuple[int, int]:
-    width = 0
-    height = 0
-    for span in spans:
-        w, h = measure(draw, span.text, font)
-        width += w
-        height = max(height, h)
+    if not words:
+        return 0, 0
+    space_w = _rich_space_width(draw, font, stroke_w)
+    width = sum(int(draw.textlength(w.text, font=font)) for w in words) + max(0, len(words) - 1) * space_w
+    height = max(measure(draw, w.text, font)[1] for w in words)
     return width, height
 
 
@@ -141,53 +156,63 @@ def _wrap_rich_spans(
     spans: list[RichTextSpan],
     font,
     max_w: int,
+    stroke_w: int = 7,
 ) -> list[list[RichTextSpan]]:
-    """Break spans into rows that each fit within max_w, splitting at word boundaries."""
-    from src.models import RichTextSpan as RS
-    rows: list[list[RS]] = []
-    current_row: list[RS] = []
+    """Break spans into rows of words that each fit within max_w."""
+    words = _flatten_spans_to_words(spans)
+    if not words:
+        return []
+
+    space_w = _rich_space_width(draw, font, stroke_w)
+    rows: list[list[RichTextSpan]] = []
+    current_row: list[RichTextSpan] = []
     current_w = 0
 
-    for span in spans:
-        words = span.text.split(" ")
-        for wi, word in enumerate(words):
-            piece = word if wi == len(words) - 1 else word + " "
-            w, _ = measure(draw, piece, font)
-            if current_w + w > max_w and current_row:
-                rows.append(current_row)
-                current_row = []
-                current_w = 0
-                piece = piece.lstrip()  # trim leading space on new row
-                w, _ = measure(draw, piece, font)
-            if piece:
-                current_row.append(RS(text=piece, color=span.color))
-                current_w += w
+    for word in words:
+        w = int(draw.textlength(word.text, font=font))
+        added_w = (space_w if current_row else 0) + w
+        if current_w + added_w > max_w and current_row:
+            rows.append(current_row)
+            current_row = [word]
+            current_w = w
+        else:
+            current_row.append(word)
+            current_w += added_w
 
     if current_row:
         rows.append(current_row)
-    return rows or [[]]
+    return rows
 
 
 def _draw_rich_line(
     draw: ImageDraw.ImageDraw,
-    spans: list[RichTextSpan],
+    words: list[RichTextSpan],
     font,
     x: int,
     y: int,
     alpha: int,
+    stroke_w: int = 7,
 ) -> None:
-    cursor = x
+    if not words:
+        return
+    space_w = _rich_space_width(draw, font, stroke_w)
     shadow_a = int(80 * alpha / 255)
+
     # First pass: drop shadow with matching stroke
-    for span in spans:
-        draw.text((cursor + 4, y + 4), span.text, font=font, fill=(0, 0, 0, shadow_a), stroke_width=7, stroke_fill=(0, 0, 0, shadow_a))
-        cursor += measure(draw, span.text, font)[0]
+    cursor = x
+    for word in words:
+        draw.text((cursor + 4, y + 4), word.text, font=font, fill=(0, 0, 0, shadow_a), stroke_width=stroke_w, stroke_fill=(0, 0, 0, shadow_a))
+        cursor += int(draw.textlength(word.text, font=font)) + space_w
+
     # Second pass: main text with crisp white outline
     cursor = x
-    for span in spans:
-        color = _parse_hex_color(span.color, (42, 42, 42))
-        draw.text((cursor, y), span.text, font=font, fill=(*color, alpha), stroke_width=7, stroke_fill=(255, 255, 255, alpha))
-        cursor += measure(draw, span.text, font)[0]
+    for word in words:
+        color = _parse_hex_color(word.color, (42, 42, 42))
+        draw.text((cursor, y), word.text, font=font, fill=(*color, alpha), stroke_width=stroke_w, stroke_fill=(255, 255, 255, alpha))
+        cursor += int(draw.textlength(word.text, font=font)) + space_w
+
+
+_TEXT_OVERLAY_CACHE: dict[tuple, tuple[Image.Image, int]] = {}
 
 
 def draw_text_overlay(
@@ -206,6 +231,18 @@ def draw_text_overlay(
     rich_text_sub = rich_text_sub or []
     if not text and not sub and not rich_text and not rich_text_sub:
         return
+
+    # Fast cache lookup for steady-state frames (alpha=255, y_offset=0)
+    cache_key = None
+    if alpha == 255 and y_offset == 0:
+        rt_key = tuple((s.text, s.color) for s in rich_text) if rich_text else ()
+        rts_key = tuple((s.text, s.color) for s in rich_text_sub) if rich_text_sub else ()
+        cache_key = (text, sub, size_key, round(w_scale, 3), rt_key, rts_key, canvas.width, canvas.height)
+        cached = _TEXT_OVERLAY_CACHE.get(cache_key)
+        if cached is not None:
+            patch, paste_y = cached
+            canvas.alpha_composite(patch, (0, paste_y))
+            return
 
     main_px, sub_px = TEXT_SIZES.get(size_key, TEXT_SIZES["normal"])
     main_font = find_font(int(main_px * w_scale), bold=True)
@@ -244,12 +281,15 @@ def draw_text_overlay(
     # Text zone: top 27% of canvas — character lives below this
     zone_top = int(canvas.height * 0.06)
     zone_h   = int(canvas.height * 0.27)
-    y = zone_top + max(0, (zone_h - total_h) // 2) + y_offset
+    target_y = zone_top + max(0, (zone_h - total_h) // 2) + y_offset
 
-    layer = Image.new("RGBA", canvas.size, (0, 0, 0, 0))
+    # Allocate only a compact vertical strip instead of a full 1080x1920 image
+    pad_y = int(14 * w_scale)
+    patch_h = total_h + pad_y * 2
+    layer = Image.new("RGBA", (canvas.width, patch_h), (0, 0, 0, 0))
     draw  = ImageDraw.Draw(layer)
+    y = pad_y
 
-    # Instead of the closure trick, just draw inline:
     if rich_rows:
         for row in rich_rows:
             w, h = _measure_rich_line(draw, row, main_font)
@@ -282,7 +322,17 @@ def draw_text_overlay(
             draw.text((x, y), line, font=sub_font, fill=(30, 30, 30, alpha), stroke_width=5, stroke_fill=(255, 255, 255, alpha))
             y += h + gap_ln
 
-    canvas.alpha_composite(layer)
+    paste_y = target_y - pad_y
+    if cache_key is not None:
+        _TEXT_OVERLAY_CACHE[cache_key] = (layer, paste_y)
+
+    if paste_y >= 0 and paste_y + patch_h <= canvas.height:
+        canvas.alpha_composite(layer, (0, paste_y))
+    else:
+        py0 = max(0, -paste_y)
+        py1 = min(patch_h, canvas.height - paste_y)
+        if py1 > py0:
+            canvas.alpha_composite(layer.crop((0, py0, canvas.width, py1)), (0, max(0, paste_y)))
 
 
 def iter_video_frames(
@@ -497,11 +547,11 @@ def iter_video_frames(
                 acc_img = Image.open(ap).convert("RGBA")
             target_w = max(1, int(config.width * acc.scale))
             ratio = target_w / acc_img.width
-            acc_img = acc_img.resize((target_w, max(1, int(acc_img.height * ratio))), Image.Resampling.LANCZOS)
+            acc_img = acc_img.resize((target_w, max(1, int(acc_img.height * ratio))), Image.Resampling.BILINEAR)
             if acc.flip_x:
                 acc_img = acc_img.transpose(Image.Transpose.FLIP_LEFT_RIGHT)
             if abs(acc.rotate) > 0.3:
-                acc_img = acc_img.rotate(-acc.rotate, expand=True, resample=Image.Resampling.BICUBIC)
+                acc_img = acc_img.rotate(-acc.rotate, expand=True, resample=Image.Resampling.BILINEAR)
             acc_pos = POSITIONS.get(acc.pos) if acc.pos in POSITIONS else None
             if acc_pos is None:
                 try:
@@ -519,7 +569,7 @@ def iter_video_frames(
         # ----------------------------------------------------------------
         # Multi-Actor Staging & Ground Shadows (Virtual Camera Projected)
         # ----------------------------------------------------------------
-        actor_anchors: list[tuple[float, float]] = []
+        actor_anchors: list[dict] = []
 
         for a_idx, actor in enumerate(sorted_actors):
             act_char = actor.character or config.default_character
@@ -580,7 +630,7 @@ def iter_video_frames(
             sf = target_cat_w / (orig_w * SPRITE_UPSCALE)
             new_w = max(1, int(sprite.width  * sf * sq_x))
             new_h = max(1, int(sprite.height * sf * sq_y))
-            sprite = sprite.resize((new_w, new_h), Image.Resampling.LANCZOS)
+            sprite = sprite.resize((new_w, new_h), Image.Resampling.BILINEAR)
 
             # Dynamic orientation (auto-flip to face walking direction or manual flip)
             if traj.flip_x:
@@ -588,7 +638,7 @@ def iter_video_frames(
 
             # Rotate
             if abs(rot_deg) > 0.3:
-                sprite = sprite.rotate(rot_deg, expand=True, resample=Image.Resampling.BICUBIC)
+                sprite = sprite.rotate(rot_deg, expand=True, resample=Image.Resampling.BILINEAR)
 
             # Anchor coordinates
             sx = int(config.width  * screen_cx - sprite.width  // 2)
@@ -603,15 +653,28 @@ def iter_video_frames(
                 sh_h = max(4, int(sh_w * 0.24 * sq_y * jump_factor))
                 sh_alpha = int(75 * jump_factor)
                 if sh_w > 8 and sh_h > 2 and sh_alpha > 5:
-                    sh_img = Image.new("RGBA", (config.width, config.height), (0, 0, 0, 0))
-                    sh_draw = ImageDraw.Draw(sh_img)
+                    blur_rad = max(1, int(6 * w_scale))
+                    pad = blur_rad * 3
+                    patch_w = sh_w + pad * 2
+                    patch_h = sh_h + pad * 2
+                    sh_patch = Image.new("RGBA", (patch_w, patch_h), (0, 0, 0, 0))
+                    sh_draw = ImageDraw.Draw(sh_patch)
+                    sh_draw.ellipse([pad, pad, pad + sh_w, pad + sh_h], fill=(20, 25, 35, sh_alpha))
+                    sh_patch = sh_patch.filter(ImageFilter.GaussianBlur(radius=blur_rad))
+
                     sh_cx = int(config.width * screen_cx)
-                    sh_draw.ellipse(
-                        [sh_cx - sh_w // 2, ground_screen_y - sh_h // 2, sh_cx + sh_w // 2, ground_screen_y + sh_h // 2],
-                        fill=(20, 25, 35, sh_alpha),
-                    )
-                    sh_img = sh_img.filter(ImageFilter.GaussianBlur(radius=int(6 * w_scale)))
-                    canvas.alpha_composite(sh_img)
+                    dst_x = sh_cx - sh_w // 2 - pad
+                    dst_y = ground_screen_y - sh_h // 2 - pad
+
+                    px0 = max(0, -dst_x)
+                    py0 = max(0, -dst_y)
+                    px1 = min(patch_w, config.width - dst_x)
+                    py1 = min(patch_h, config.height - dst_y)
+                    if px1 > px0 and py1 > py0:
+                        canvas.alpha_composite(
+                            sh_patch.crop((px0, py0, px1, py1)),
+                            (max(0, dst_x), max(0, dst_y)),
+                        )
 
             # Composite character sprite
             src_x0 = max(0, -sx);  src_x1 = min(sprite.width,  config.width  - sx)
@@ -622,19 +685,54 @@ def iter_video_frames(
                     (max(0, sx), max(0, sy)),
                 )
 
-            actor_anchors.append((config.width * screen_cx, config.height * screen_cy))
+            # Character head anchor calculation (calibrated to character sprite proportions)
+            is_duck = ("duck" in act_char.lower())
+            head_offset_ratio = 0.24 if is_duck else 0.30
+            # If actor is lying down (knockout / fallen)
+            if "knockout" in act_anim.lower():
+                char_head_x = config.width * screen_cx + (int(sprite.width * 0.18) if not traj.flip_x else -int(sprite.width * 0.18))
+                char_head_y = config.height * screen_cy - int(sprite.height * 0.08)
+            else:
+                char_head_x = config.width * screen_cx + (int(sprite.width * (0.05 if not is_duck else 0.02)) * (1.0 if not traj.flip_x else -1.0))
+                char_head_y = config.height * screen_cy - int(sprite.height * head_offset_ratio)
+
+            actor_anchors.append({
+                "index": a_idx,
+                "character": act_char,
+                "pos": (config.width * screen_cx, config.height * screen_cy),
+                "head_pos": (char_head_x, char_head_y),
+                "sprite_size": (sprite.width, sprite.height),
+                "flip_x": traj.flip_x,
+                "w_scale": w_scale,
+                "scale": char_scale,
+                "vfx": getattr(actor, "vfx", []),
+            })
 
         # ----------------------------------------------------------------
-        # Kawaii VFX Particle Overlay
+        # Kawaii VFX Particle Overlay (Per-Actor, Target-Filtered, or Free Position)
         # ----------------------------------------------------------------
-        if beat.vfx:
+        all_vfx: list[dict] = []
+        for a_dict in actor_anchors:
+            for v in a_dict.get("vfx", []):
+                v_copy = dict(v)
+                if "target" not in v_copy:
+                    v_copy["target"] = a_dict["character"] or a_dict["index"]
+                all_vfx.append(v_copy)
+        for v in beat.vfx:
+            if isinstance(v, str):
+                all_vfx.append({"type": v})
+            elif isinstance(v, dict):
+                all_vfx.append(v)
+
+        if all_vfx:
             vfx_img = render_vfx_layer(
                 (config.width, config.height),
-                beat.vfx,
+                all_vfx,
                 t=t,
                 age=age,
                 anchor_positions=actor_anchors,
                 w_scale=w_scale,
+                beat_dur=beat_dur,
             )
             canvas.alpha_composite(vfx_img)
 
@@ -662,7 +760,7 @@ def iter_video_frames(
             wy = config.height - wm_img.height - int(90 * w_scale)
             canvas.alpha_composite(wm_img, (wx, max(0, wy)))
 
-        yield canvas.convert("RGB")
+        yield canvas
 
 
 def render_video_frames(
