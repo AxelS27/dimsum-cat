@@ -118,6 +118,7 @@ def _load_actors(raw: object) -> list[ActorConfig]:
                     auto_tilt        = a.get("auto_tilt", True),
                     auto_flip        = bool(a.get("auto_flip", True)),
                     loop_path        = bool(a.get("loop_path", False)),
+                    vfx              = _load_vfx(a.get("vfx")),
                 )
             )
     return actors
@@ -132,6 +133,22 @@ def _load_vfx(raw: object) -> list[dict]:
     for item in raw:
         if isinstance(item, str):
             res.append({"type": item.strip()})
+        elif isinstance(item, dict):
+            res.append(item)
+    return res
+
+
+def _load_sfx(raw: object) -> list[dict]:
+    if isinstance(raw, str):
+        return [{"file": raw.strip(), "volume": 1.0}]
+    if isinstance(raw, dict):
+        return [raw]
+    if not isinstance(raw, list):
+        return []
+    res: list[dict] = []
+    for item in raw:
+        if isinstance(item, str):
+            res.append({"file": item.strip(), "volume": 1.0})
         elif isinstance(item, dict):
             res.append(item)
     return res
@@ -189,6 +206,7 @@ def load_story_file(path: Path, args: argparse.Namespace) -> RenderConfig:
             transition_dur  = float(b.get("transition_dur", 0.22)),
             actors          = _load_actors(b.get("actors")),
             vfx             = _load_vfx(b.get("vfx")),
+            sfx             = _load_sfx(b.get("sfx")),
             ground_shadow   = bool(b.get("ground_shadow", True)),
             move_to         = b.get("move_to") or b.get("pos_to"),
             path            = b.get("path") or b.get("waypoints"),
@@ -608,29 +626,70 @@ def render(config: RenderConfig, tts_only: bool = False, audio_only: bool = Fals
                 tts_pitch=config.tts_pitch,
             )
             shutil.rmtree(out_base / "_tts_tmp", ignore_errors=True)
+            # Collect all sfx across beats
+            sfx_list: list[tuple[float, Path, float]] = []
+            for beat in config.beats:
+                for s in getattr(beat, "sfx", []):
+                    f_str = s.get("file", "")
+                    if f_str:
+                        p = Path(f_str)
+                        sfx_p = p if p.is_absolute() else (config.story_dir / p if config.story_dir and (config.story_dir / p).exists() else ROOT / p)
+                        if sfx_p.exists():
+                            t_offset = float(s.get("time", beat.time))
+                            vol = float(s.get("volume", 1.0))
+                            sfx_list.append((t_offset, sfx_p, vol))
+                        else:
+                            print(f"  WARNING: sfx file not found: {f_str}")
+
             if mix_ok:
-                mux_audio_into_mp4(mp4_path, audio_path, bg_music=bg_music_path, bg_music_start=config.bg_music_start, bg_music_fade_in=config.bg_music_fade_in, bg_volume=config.bg_volume, tts_volume=config.tts_volume)
+                mux_audio_into_mp4(mp4_path, audio_path, bg_music=bg_music_path, bg_music_start=config.bg_music_start, bg_music_fade_in=config.bg_music_fade_in, bg_volume=config.bg_volume, tts_volume=config.tts_volume, sfx_list=sfx_list)
                 audio_path.unlink(missing_ok=True)
                 suffix = " + background music" if bg_music_path else ""
+                if sfx_list:
+                    suffix += f" + {len(sfx_list)} SFX"
                 print(f"  TTS muxed into MP4{suffix}.")
             else:
                 print("  TTS mix failed — video saved without audio.")
         else:
             print("  TTS failed — video saved without audio.")
-    elif bg_music_path:
-        # Background music only (no TTS)
-        print("  Adding background music...")
-        silence = out_base / "_silence.mp3"
-        ffmpeg = find_ffmpeg()
-        subprocess.run(
-            [ffmpeg, "-y", "-f", "lavfi",
-             "-i", f"anullsrc=r=44100:cl=stereo,atrim=duration={config.duration}",
-             "-c:a", "libmp3lame", "-b:a", "64k", str(silence)],
-            stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True,
-        )
-        mux_audio_into_mp4(mp4_path, silence, bg_music=bg_music_path, bg_music_start=config.bg_music_start, bg_music_fade_in=config.bg_music_fade_in, bg_volume=config.bg_volume, tts_volume=config.tts_volume)
-        silence.unlink(missing_ok=True)
-        print("  Background music muxed into MP4.")
+    else:
+        # Collect all sfx across beats
+        sfx_list = []
+        for beat in config.beats:
+            for s in getattr(beat, "sfx", []):
+                f_str = s.get("file", "")
+                if f_str:
+                    p = Path(f_str)
+                    sfx_p = p if p.is_absolute() else (config.story_dir / p if config.story_dir and (config.story_dir / p).exists() else ROOT / p)
+                    if sfx_p.exists():
+                        t_offset = float(s.get("time", beat.time))
+                        vol = float(s.get("volume", 1.0))
+                        sfx_list.append((t_offset, sfx_p, vol))
+                    else:
+                        print(f"  WARNING: sfx file not found: {f_str}")
+
+        if bg_music_path or sfx_list:
+            # Audio muxing (BGM and/or SFX, without TTS)
+            label = "Adding audio"
+            if bg_music_path and sfx_list:
+                label += f" (background music + {len(sfx_list)} SFX)"
+            elif bg_music_path:
+                label += " (background music)"
+            else:
+                label += f" ({len(sfx_list)} SFX)"
+            print(f"  {label}...")
+
+            silence = out_base / "_silence.mp3"
+            ffmpeg = find_ffmpeg()
+            subprocess.run(
+                [ffmpeg, "-y", "-f", "lavfi",
+                 "-i", f"anullsrc=r=44100:cl=stereo,atrim=duration={config.duration}",
+                 "-c:a", "libmp3lame", "-b:a", "64k", str(silence)],
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True,
+            )
+            mux_audio_into_mp4(mp4_path, silence, bg_music=bg_music_path, bg_music_start=config.bg_music_start, bg_music_fade_in=config.bg_music_fade_in, bg_volume=config.bg_volume, tts_volume=config.tts_volume, sfx_list=sfx_list)
+            silence.unlink(missing_ok=True)
+            print("  Audio muxed into MP4.")
 
     gif_created = False
     if config.save_gif and frames is not None:

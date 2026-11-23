@@ -87,6 +87,7 @@ class ActorConfig:
     auto_tilt: bool | float = True             # lean forward in direction of motion (float = custom lean factor)
     auto_flip: bool = True                     # auto-flip sprite horizontally to face walking direction
     loop_path: bool = False                    # repeat waypoint path cyclically
+    vfx: list[dict] = field(default_factory=list) # per-actor particle & visual FX triggers
 
 
 @dataclass
