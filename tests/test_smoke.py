@@ -85,6 +85,32 @@ class EngineSmokeTests(unittest.TestCase):
         self.assertTrue(any("Hangul" in e for e in errs2))
         self.assertTrue(any("missing animation" in e for e in errs2))
 
+    def test_actor_keyframes_delay_and_opacity_render(self) -> None:
+        template_dir = ROOT / "content" / "_template"
+        cfg = load_story_file(template_dir, build_parser().parse_args([]))
+        cfg.duration = 0.6
+        cfg.fps = 10
+        cfg.width = 360
+        cfg.height = 640
+        cfg.beats = [
+            StoryBeat(
+                time=0.0,
+                text="Keyframe test",
+                animation="normal_talk",
+                scale=0.8,
+                scale_to=1.4,
+                cat_rotate=0.0,
+                rotate_to=15.0,
+                opacity=0.9,
+                fade_in=0.2,
+                fade_out=0.2,
+                delay=0.2,
+            )
+        ]
+        frames = list(iter_video_frames(cfg))
+        self.assertEqual(len(frames), 6)
+        self.assertEqual(frames[0].size, (360, 640))
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -24,6 +24,7 @@ from src.utils import (
     lerp,
     ease_out_cubic,
     ease_out_back,
+    get_ease_func,
     strip_emoji,
 )
 from src.sprite import organic, make_sprite_schedule, load_frames
@@ -572,6 +573,21 @@ def iter_video_frames(
         actor_anchors: list[dict] = []
 
         for a_idx, actor in enumerate(sorted_actors):
+            if age < actor.delay:
+                continue
+            actor_age = age - actor.delay
+            active_dur = max(0.05, beat_dur - actor.delay)
+            kf_t = get_ease_func(actor.move_ease)(min(1.0, actor_age / active_dur))
+
+            eff_opacity = max(0.0, min(1.0, actor.opacity))
+            if actor.fade_in > 0.0 and actor_age < actor.fade_in:
+                eff_opacity *= max(0.0, actor_age / actor.fade_in)
+            rem_dur = max(0.0, beat_dur - age)
+            if actor.fade_out > 0.0 and rem_dur < actor.fade_out:
+                eff_opacity *= max(0.0, rem_dur / actor.fade_out)
+            if eff_opacity <= 0.01:
+                continue
+
             act_char = actor.character or config.default_character
             act_anim = actor.animation or config.default_animation
             cache_key = (act_char, act_anim)
@@ -585,14 +601,15 @@ def iter_video_frames(
             orig_w, orig_h = orig_size
 
             # Dynamic Trajectory (waypoints, movement path, auto-tilt, auto-flip)
-            traj = actor_trajectories.get(a_idx) or eval_actor_trajectory(actor, age=age, beat_dur=beat_dur)
+            traj = actor_trajectories.get(a_idx) or eval_actor_trajectory(actor, age=actor_age, beat_dur=active_dur)
             target_cx, target_cy = traj.cx, traj.cy
-            target_scale = actor.scale
+            target_scale = lerp(actor.scale, actor.scale_to, kf_t) if actor.scale_to is not None else actor.scale
+            extra_rotate = lerp(actor.rotate, actor.rotate_to, kf_t) if actor.rotate_to is not None else actor.rotate
 
             # Entrance bounce/pop only triggers for brand new appearances on stage
-            is_new_actor = (act_char not in prev_chars)
-            if is_new_actor and age < ENTRANCE_DUR:
-                prog = age / ENTRANCE_DUR
+            is_new_actor = (act_char not in prev_chars) or (actor.delay > 0.0)
+            if is_new_actor and actor_age < ENTRANCE_DUR:
+                prog = actor_age / ENTRANCE_DUR
                 spring = ease_out_back(prog)
                 char_scale = target_scale * (0.60 + 0.40 * spring)
                 rise = (1.0 - ease_out_cubic(prog)) * 0.07
@@ -607,7 +624,7 @@ def iter_video_frames(
             motion_state = compute_motion(
                 motion_preset,
                 t=t,
-                age=age,
+                age=actor_age,
                 w_scale=w_scale,
                 speed=actor.motion_speed,
                 intensity=actor.motion_intensity,
@@ -620,8 +637,8 @@ def iter_video_frames(
             screen_cx = 0.5 + (world_cx - cam.center_x) * cam.zoom + (cam.shake_x / config.width)
             screen_cy = 0.5 + (world_cy - cam.center_y) * cam.zoom + (cam.shake_y / config.height)
             char_scale *= motion_state.scale_mult * cam.zoom
-            # Auto-tilt in direction of movement + camera roll + manual rotate + organic rot
-            rot_deg = motion_state.rot_deg + traj.tilt_deg + cam.roll_deg + actor.rotate
+            # Auto-tilt in direction of movement + camera roll + manual/keyframed rotate + organic rot
+            rot_deg = motion_state.rot_deg + traj.tilt_deg + cam.roll_deg + extra_rotate
             sq_x = motion_state.sq_x
             sq_y = motion_state.sq_y
 
@@ -640,6 +657,12 @@ def iter_video_frames(
             if abs(rot_deg) > 0.3:
                 sprite = sprite.rotate(rot_deg, expand=True, resample=Image.Resampling.BILINEAR)
 
+            # Apply keyframed / fade opacity
+            if eff_opacity < 0.999:
+                r_c, g_c, b_c, a_c = sprite.split()
+                a_c = a_c.point(lambda p, mult=eff_opacity: int(p * mult))
+                sprite = Image.merge("RGBA", (r_c, g_c, b_c, a_c))
+
             # Anchor coordinates
             sx = int(config.width  * screen_cx - sprite.width  // 2)
             sy = int(config.height * screen_cy - sprite.height // 2)
@@ -651,7 +674,7 @@ def iter_video_frames(
                 jump_factor = 1.0 / (1.0 + jump_px / (45.0 * w_scale))
                 sh_w = int(sprite.width * 0.58 * sq_x * jump_factor)
                 sh_h = max(4, int(sh_w * 0.24 * sq_y * jump_factor))
-                sh_alpha = int(75 * jump_factor)
+                sh_alpha = int(75 * jump_factor * eff_opacity)
                 if sh_w > 8 and sh_h > 2 and sh_alpha > 5:
                     blur_rad = max(1, int(6 * w_scale))
                     pad = blur_rad * 3

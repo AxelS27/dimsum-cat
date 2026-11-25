@@ -119,6 +119,12 @@ def _load_actors(raw: object) -> list[ActorConfig]:
                     auto_tilt        = a.get("auto_tilt", True),
                     auto_flip        = bool(a.get("auto_flip", True)),
                     loop_path        = bool(a.get("loop_path", False)),
+                    scale_to         = float(a["scale_to"]) if a.get("scale_to") is not None else None,
+                    rotate_to        = float(a["rotate_to"]) if a.get("rotate_to") is not None else None,
+                    opacity          = float(a.get("opacity", 1.0)),
+                    fade_in          = float(a.get("fade_in", 0.0)),
+                    fade_out         = float(a.get("fade_out", 0.0)),
+                    delay            = float(a.get("delay", 0.0)),
                     vfx              = _load_vfx(a.get("vfx")),
                 )
             )
@@ -217,6 +223,12 @@ def load_story_file(path: Path, args: argparse.Namespace) -> RenderConfig:
             auto_tilt       = b.get("auto_tilt", True),
             auto_flip       = bool(b.get("auto_flip", True)),
             loop_path       = bool(b.get("loop_path", False)),
+            scale_to        = float(b["scale_to"]) if b.get("scale_to") is not None else None,
+            rotate_to       = float(b["rotate_to"]) if b.get("rotate_to") is not None else None,
+            opacity         = float(b.get("opacity", 1.0)),
+            fade_in         = float(b.get("fade_in", 0.0)),
+            fade_out        = float(b.get("fade_out", 0.0)),
+            delay           = float(b.get("delay", 0.0)),
         )
         for b in raw_beats
     ]
@@ -365,6 +377,7 @@ Demo (built-in 4-beat story):
     p.add_argument("--bg",       default="#f8f4f0",         help="Background hex color.")
     p.add_argument("--watermark", default="",               help="(unused — watermark.png is used instead)")
     p.add_argument("--gif",       action="store_true",        help="Also export a GIF preview.")
+    p.add_argument("--preview",   action="store_true",        help="Fast low-res draft render (360x640 @ 12fps) saved as preview.mp4.")
     p.add_argument("--save-frames", action="store_true", dest="save_frames", help="Save intermediate PNG frames to disk (default: False, streams directly to FFmpeg).")
     p.add_argument("--tts",              action="store_true",                   help="Add TTS voiceover.")
     p.add_argument("--gpt-sovits-ref",    default="",           dest="gpt_sovits_ref",
@@ -773,11 +786,19 @@ def main() -> None:
     remix_audio = getattr(args, "remix_audio", False)
     kwargs = dict(tts_only=tts_only, audio_only=audio_only, from_beats=from_beats, regen_beat=regen_beat, remix_audio=remix_audio)
     if args.demo:
-        result = render(config_demo(args), **kwargs)
+        cfg = config_demo(args)
     elif args.story:
-        result = render(load_story_json(args.story, args), **kwargs)
+        cfg = load_story_json(args.story, args)
     else:
-        result = render(config_from_args(args), **kwargs)
+        cfg = config_from_args(args)
+
+    if getattr(args, "preview", False):
+        cfg.width = 360
+        cfg.height = 640
+        cfg.fps = 12
+        cfg.output_name = "preview"
+
+    result = render(cfg, **kwargs)
 
     print_result(result)
 

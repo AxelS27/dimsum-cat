@@ -87,6 +87,12 @@ class ActorConfig:
     auto_tilt: bool | float = True             # lean forward in direction of motion (float = custom lean factor)
     auto_flip: bool = True                     # auto-flip sprite horizontally to face walking direction
     loop_path: bool = False                    # repeat waypoint path cyclically
+    scale_to: float | None = None              # target scale for keyframe interpolation
+    rotate_to: float | None = None             # target rotation degrees for keyframe interpolation
+    opacity: float = 1.0                       # base opacity (0.0 to 1.0)
+    fade_in: float = 0.0                       # fade-in duration in seconds
+    fade_out: float = 0.0                      # fade-out duration in seconds
+    delay: float = 0.0                         # sub-beat entrance delay in seconds
     vfx: list[dict] = field(default_factory=list) # per-actor particle & visual FX triggers
 
 
@@ -161,6 +167,12 @@ class StoryBeat:
     auto_tilt: bool | float = True                           # auto-lean forward into movement direction
     auto_flip: bool = True                                   # auto-flip sprite horizontally to face walk direction
     loop_path: bool = False                                  # repeat waypoints cyclically
+    scale_to: float | None = None                            # single-actor target scale
+    rotate_to: float | None = None                           # single-actor target rotation degrees
+    opacity: float = 1.0                                     # single-actor base opacity (0.0 to 1.0)
+    fade_in: float = 0.0                                     # single-actor fade-in duration (s)
+    fade_out: float = 0.0                                    # single-actor fade-out duration (s)
+    delay: float = 0.0                                       # single-actor sub-beat entrance delay (s)
 
     def get_camera_config(self) -> CameraConfig:
         """Resolve camera settings into a strongly-typed CameraConfig."""
@@ -214,6 +226,12 @@ class StoryBeat:
                     auto_tilt        = a.auto_tilt,
                     auto_flip        = a.auto_flip,
                     loop_path        = a.loop_path,
+                    scale_to         = a.scale_to,
+                    rotate_to        = a.rotate_to,
+                    opacity          = a.opacity,
+                    fade_in          = a.fade_in,
+                    fade_out         = a.fade_out,
+                    delay            = a.delay,
                     vfx              = a.vfx,
                 ))
             return res
@@ -238,6 +256,12 @@ class StoryBeat:
                 auto_tilt        = self.auto_tilt,
                 auto_flip        = self.auto_flip,
                 loop_path        = self.loop_path,
+                scale_to         = self.scale_to,
+                rotate_to        = self.rotate_to,
+                opacity          = self.opacity,
+                fade_in          = self.fade_in,
+                fade_out         = self.fade_out,
+                delay            = self.delay,
             )
         ]
 
