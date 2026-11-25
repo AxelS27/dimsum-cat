@@ -5,7 +5,7 @@ import unittest
 from pathlib import Path
 
 from src.camera import compute_camera
-from src.models import ActorConfig, StoryBeat
+from src.models import Accessory, ActorConfig, StoryBeat
 from src.renderer import iter_video_frames
 from src.story import build_parser, load_story_file, validate_story
 from src.tts import _detect_emotion, _resolve_tts_lang, _should_speak
@@ -150,6 +150,32 @@ class EngineSmokeTests(unittest.TestCase):
         ]
         frames = list(iter_video_frames(cfg))
         self.assertEqual(len(frames), 6)
+
+    def test_attached_accessory_renders_on_actor(self) -> None:
+        template_dir = ROOT / "content" / "_template"
+        cfg = load_story_file(template_dir, build_parser().parse_args([]))
+        cfg.duration = 0.2
+        cfg.fps = 10
+        cfg.width = 360
+        cfg.height = 640
+        cfg.beats = [
+            StoryBeat(
+                time=0.0,
+                text="With prop!",
+                animation="normal_talk",
+                motion="squash_bounce",
+                accessories=[
+                    Accessory(
+                        image="assets/sprites/watermark.png",
+                        scale=0.2,
+                        attach_to="dimsum_cat",
+                        offset=(0.0, -0.35),
+                    )
+                ],
+            )
+        ]
+        frames = list(iter_video_frames(cfg))
+        self.assertEqual(len(frames), 2)
 
 
 if __name__ == "__main__":

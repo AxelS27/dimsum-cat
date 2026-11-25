@@ -17,6 +17,7 @@ from dotenv import load_dotenv
 load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
 from src.models import (
+    Accessory,
     ActorConfig,
     RenderConfig,
     RichTextSpan,
@@ -161,6 +162,26 @@ def _load_sfx(raw: object) -> list[dict]:
     return res
 
 
+def _load_accessories(raw: object) -> list[Accessory]:
+    if not isinstance(raw, list):
+        return []
+    res: list[Accessory] = []
+    for item in raw:
+        if isinstance(item, dict) and item.get("image"):
+            res.append(
+                Accessory(
+                    image=str(item["image"]),
+                    pos=item.get("pos", "0.5,0.5"),
+                    scale=float(item.get("scale", 1.0)),
+                    flip_x=bool(item.get("flip_x", False)),
+                    rotate=float(item.get("rotate", 0.0)),
+                    attach_to=str(item.get("attach_to", "")),
+                    offset=item.get("offset", (0.0, 0.0)),
+                )
+            )
+    return res
+
+
 def load_story_file(path: Path, args: argparse.Namespace) -> RenderConfig:
     """Load story from either story.yaml, story.yml, or story.json.
 
@@ -225,6 +246,7 @@ def load_story_file(path: Path, args: argparse.Namespace) -> RenderConfig:
             transition      = b.get("transition", ""),
             transition_dur  = float(b.get("transition_dur", 0.22)),
             actors          = _load_actors(b.get("actors")),
+            accessories     = _load_accessories(b.get("accessories")),
             vfx             = _load_vfx(b.get("vfx")),
             sfx             = _load_sfx(b.get("sfx")),
             ground_shadow   = bool(b.get("ground_shadow", True)),

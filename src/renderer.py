@@ -337,6 +337,91 @@ def draw_text_overlay(
             canvas.alpha_composite(layer.crop((0, py0, canvas.width, py1)), (0, max(0, paste_y)))
 
 
+def _render_accessory(
+    canvas: Image.Image,
+    acc,
+    config: RenderConfig,
+    idx: int,
+    actor_anchors: list[dict] | None = None,
+) -> None:
+    """Load, transform, and composite one Accessory onto canvas (optionally attached to an actor)."""
+    from pathlib import Path as _APath
+    ap = _APath(acc.image)
+    if not ap.is_absolute():
+        candidate = config.story_dir / ap if config.story_dir else None
+        ap = candidate if (candidate and candidate.exists()) else (ROOT / ap)
+    if not ap.exists():
+        return
+    if ap.is_dir():
+        num_frames = sorted(ap.glob("frame_[0-9][0-9].png"))
+        if num_frames:
+            acc_frames = [Image.open(p).convert("RGBA") for p in num_frames]
+        else:
+            from src.models import FRAME_NAMES as _FN
+            acc_frames = [Image.open(ap / f).convert("RGBA") for f in _FN if (ap / f).exists()]
+        if not acc_frames:
+            return
+        frame_i = idx // max(1, config.fps // 2) % len(acc_frames)
+        acc_img = acc_frames[frame_i]
+    else:
+        acc_img = Image.open(ap).convert("RGBA")
+
+    eff_scale = acc.scale
+    eff_flip = acc.flip_x
+    eff_rot = acc.rotate
+    anchor_px: tuple[float, float] | None = None
+
+    attach_target = (getattr(acc, "attach_to", "") or "").strip()
+    if attach_target and actor_anchors:
+        match = next(
+            (a for a in actor_anchors if a.get("character") == attach_target or str(a.get("index")) == attach_target),
+            None,
+        )
+        if match is None:
+            return
+        eff_scale *= float(match.get("scale", 1.0))
+        actor_flip = bool(match.get("flip_x", False))
+        eff_flip = bool(eff_flip) ^ actor_flip
+        actor_rot = float(match.get("rot_deg", 0.0))
+        eff_rot += actor_rot
+        off = getattr(acc, "offset", (0.0, 0.0)) or (0.0, 0.0)
+        dx = float(off[0]) * match["sprite_size"][0] * (-1.0 if actor_flip else 1.0)
+        dy = float(off[1]) * match["sprite_size"][1]
+        if abs(actor_rot) > 0.1:
+            rad = math.radians(-actor_rot)
+            rx = dx * math.cos(rad) - dy * math.sin(rad)
+            ry = dx * math.sin(rad) + dy * math.cos(rad)
+            dx, dy = rx, ry
+        anchor_px = (match["pos"][0] + dx, match["pos"][1] + dy)
+
+    target_w = max(1, int(config.width * eff_scale))
+    ratio = target_w / acc_img.width
+    acc_img = acc_img.resize((target_w, max(1, int(acc_img.height * ratio))), Image.Resampling.BILINEAR)
+    if eff_flip:
+        acc_img = acc_img.transpose(Image.Transpose.FLIP_LEFT_RIGHT)
+    if abs(eff_rot) > 0.3:
+        acc_img = acc_img.rotate(-eff_rot, expand=True, resample=Image.Resampling.BILINEAR)
+
+    if anchor_px is not None:
+        ax = int(anchor_px[0] - acc_img.width // 2)
+        ay = int(anchor_px[1] - acc_img.height // 2)
+    else:
+        acc_pos = POSITIONS.get(acc.pos) if acc.pos in POSITIONS else None
+        if acc_pos is None:
+            try:
+                parts = str(acc.pos).split(",")
+                acc_pos = (float(parts[0]), float(parts[1]))
+            except Exception:
+                acc_pos = (0.5, 0.5)
+        ax = int(config.width * acc_pos[0] - acc_img.width // 2)
+        ay = int(config.height * acc_pos[1] - acc_img.height // 2)
+
+    ax0 = max(0, -ax); ax1 = min(acc_img.width, config.width - ax)
+    ay0 = max(0, -ay); ay1 = min(acc_img.height, config.height - ay)
+    if ax1 > ax0 and ay1 > ay0:
+        canvas.alpha_composite(acc_img.crop((ax0, ay0, ax1, ay1)), (max(0, ax), max(0, ay)))
+
+
 def iter_video_frames(
     config: RenderConfig,
     frame_start: int = 0,
@@ -528,51 +613,10 @@ def iter_video_frames(
         if trans_type != "none" and age < trans_dur:
             canvas = apply_transition(canvas, None, trans_type, age, duration=trans_dur)
 
-        # Accessories — composited BEFORE characters
-        from pathlib import Path as _APath
+        # Unattached accessories — composited BEFORE characters
         for acc in beat.accessories:
-            ap = _APath(acc.image)
-            if not ap.is_absolute():
-                candidate = config.story_dir / ap if config.story_dir else None
-                if candidate and candidate.exists():
-                    ap = candidate
-                else:
-                    ap = ROOT / ap
-            if not ap.exists():
-                continue
-            if ap.is_dir():
-                num_frames = sorted(ap.glob("frame_[0-9][0-9].png"))
-                if num_frames:
-                    acc_frames = [Image.open(p).convert("RGBA") for p in num_frames]
-                else:
-                    from src.models import FRAME_NAMES as _FN
-                    acc_frames = [Image.open(ap / f).convert("RGBA") for f in _FN if (ap / f).exists()]
-                if not acc_frames:
-                    continue
-                frame_i = idx // max(1, config.fps // 2) % len(acc_frames)
-                acc_img = acc_frames[frame_i]
-            else:
-                acc_img = Image.open(ap).convert("RGBA")
-            target_w = max(1, int(config.width * acc.scale))
-            ratio = target_w / acc_img.width
-            acc_img = acc_img.resize((target_w, max(1, int(acc_img.height * ratio))), Image.Resampling.BILINEAR)
-            if acc.flip_x:
-                acc_img = acc_img.transpose(Image.Transpose.FLIP_LEFT_RIGHT)
-            if abs(acc.rotate) > 0.3:
-                acc_img = acc_img.rotate(-acc.rotate, expand=True, resample=Image.Resampling.BILINEAR)
-            acc_pos = POSITIONS.get(acc.pos) if acc.pos in POSITIONS else None
-            if acc_pos is None:
-                try:
-                    parts = str(acc.pos).split(",")
-                    acc_pos = (float(parts[0]), float(parts[1]))
-                except Exception:
-                    acc_pos = (0.5, 0.5)
-            ax = int(config.width  * acc_pos[0] - acc_img.width  // 2)
-            ay = int(config.height * acc_pos[1] - acc_img.height // 2)
-            ax0 = max(0, -ax); ax1 = min(acc_img.width,  config.width  - ax)
-            ay0 = max(0, -ay); ay1 = min(acc_img.height, config.height - ay)
-            if ax1 > ax0 and ay1 > ay0:
-                canvas.alpha_composite(acc_img.crop((ax0, ay0, ax1, ay1)), (max(0, ax), max(0, ay)))
+            if not getattr(acc, "attach_to", ""):
+                _render_accessory(canvas, acc, config, idx)
 
         # ----------------------------------------------------------------
         # Multi-Actor Staging & Ground Shadows (Virtual Camera Projected)
@@ -735,8 +779,14 @@ def iter_video_frames(
                 "flip_x": traj.flip_x,
                 "w_scale": w_scale,
                 "scale": char_scale,
+                "rot_deg": rot_deg,
                 "vfx": getattr(actor, "vfx", []),
             })
+
+        # Attached accessories — composited AFTER characters so they follow actor motion
+        for acc in beat.accessories:
+            if getattr(acc, "attach_to", ""):
+                _render_accessory(canvas, acc, config, idx, actor_anchors=actor_anchors)
 
         # ----------------------------------------------------------------
         # Kawaii VFX Particle Overlay (Per-Actor, Target-Filtered, or Free Position)

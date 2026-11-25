@@ -98,12 +98,14 @@ class ActorConfig:
 
 @dataclass
 class Accessory:
-    """A sprite overlay composited on top of the character."""
+    """A sprite overlay composited on the stage or attached to an actor."""
     image: str              # path to PNG relative to story_dir or project root
-    pos: str = "0.5,0.5"   # "cx,cy" fractions or named position key
+    pos: str = "0.5,0.5"   # "cx,cy" fractions or named position key (when unattached)
     scale: float = 1.0
     flip_x: bool = False    # mirror horizontally
     rotate: float = 0.0     # degrees clockwise
+    attach_to: str = ""     # character name to attach to (inherits pos, scale, rot, flip)
+    offset: list | tuple = (0.0, 0.0)  # (dx, dy) relative to attached actor's sprite size
 
 
 @dataclass
