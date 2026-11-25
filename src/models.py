@@ -214,6 +214,7 @@ class StoryBeat:
                     auto_tilt        = a.auto_tilt,
                     auto_flip        = a.auto_flip,
                     loop_path        = a.loop_path,
+                    vfx              = a.vfx,
                 ))
             return res
         return [

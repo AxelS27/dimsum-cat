@@ -132,16 +132,17 @@ Background color (`bg`) should always **match the mood of the video** — not lo
 - K-pop: **4–7 beats** (TTS sings/reacts along with music)
 
 ### Beat Writing Rules
-- `text`: short Korean — **max 10 chars per line**
-- `sub`: English context — **max 40 chars**
+- `text`: short, punchy English — **max ~15–20 chars per line** for readability
+- `sub`: strictly optional English secondary line (internal monologue, whisper, or stage direction) — omit when `text` is already clear
+- `tts_text`: Korean Hangul spoken by GPT-SoVITS when `tts: true` (never rendered on screen)
 - Arc: setup → escalation → reaction → resolution/punchline
 - End on a strong beat
 - Silent dramatic pause: `"text": "...."` with `side_eye` or `sulking`
 
 ### TTS Minimum Length Rule
-- Each `text` beat must have **at least 7 Korean syllables** (characters in 가–힣)
+- Each `tts_text` beat (when spoken) must have **at least 7 Korean syllables** (characters in 가–힣)
 - Beats shorter than 7 syllables cause GPT-SoVITS to generate wobbly/unstable pitch ("melengkung")
-- If a beat feels too short, **expand or rephrase** — add context, reaction, or a trailing question
+- If a beat feels too short, **expand or rephrase** `tts_text` — add context, reaction, or a trailing question
 - Example: ~~`"안녕! 나야 나!"`~~ → `"야야, 나야 나! 기다렸지?"`
 
 ### Voice & Tone — Talk Like a Bestie
@@ -207,8 +208,9 @@ description: caption + master # + kpop #
 ```
 
 Beat rules:
-- `text` = Korean lyrics of the viral part (phonetically or actual lyrics)
-- `sub` = English lyric translation
+- `text` = English lyric / punchy line on screen
+- `tts_text` = Korean lyrics of the viral part (phonetically or actual lyrics)
+- `sub` = optional English context / lyric note if needed
 - Time beats tightly to the song's rhythm
 - High-energy animations on the drop: mini_twirl, happy_bounce, cheering, clapping
 - End with finger_heart or blow_kiss
@@ -244,7 +246,7 @@ description: caption + master # + kdrama #
 ```
 
 Beat rules:
-- Keep dialogue short (max 8 Korean chars per beat)
+- Keep on-screen `text` short and punchy in English, with iconic Korean dialogue in `tts_text`
 - Build to the most iconic line
 - End on emotional peak
 - Use OST as bg_music for instant fan recognition
@@ -294,8 +296,8 @@ Save as `content/<name>/story.json`:
   "beats": [
     {
       "time": 0.0,
-      "text": "Korean text",
-      "sub": "English subtitle",
+      "text": "English text",
+      "tts_text": "한국어 대사 여기",
       "animation": "normal_talk",
       "pos": "center",
       "scale": 1.0,
@@ -309,11 +311,11 @@ Save as `content/<name>/story.json`:
 
 ## Pre-Render Checklist
 
-- [ ] All `text` fields are Korean hangul
-- [ ] All `sub` fields are English
+- [ ] All `text` (and optional `sub`) fields are English — no Hangul on screen
+- [ ] All `tts_text` fields are Korean hangul (when `tts: true`, ≥ 7 syllables)
 - [ ] No emoji in `text`
 - [ ] Description has master # + category #
 - [ ] `gpt_sovits_ref` path exists
 - [ ] `bg_music` path exists
 - [ ] GPT-SoVITS server is running at port 9880
-- [ ] Story folder created at `content/<name>/`
+- [ ] Story folder created at `content/<category>/<name>/`
