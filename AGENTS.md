@@ -48,6 +48,11 @@ design PNG → scripts/gridder → crop → ESRGAN 4x (GPU) → remove_bg → an
 
 See `docs/PLAYBOOK.md` for full character and story rules.
 
+## Story & Subtitle Rules
+
+- **Utamakan `text` (title utama) saja** — `100%` English, singkat, dan punchy.
+- **Jangan terlalu sering pakai `sub`** — `sub` hanya dipakai untuk momen tertentu saja (misal bisikan, internal monologue, atau stage direction). Jika `text` sudah jelas, kosongkan/hapus `sub`.
+
 ## Workspace Hygiene (Wajib Dipatuhi)
 
 - **Jangan tinggalkan file sampah atau preview** (`*_preview*.png`, `*crop_preview*/`, `debug_cells/`, `test_crop/`, `*.tmp`, `_tts_tmp/`) di dalam repo setelah selesai. Hapus semua file sementara sebelum mengakhiri task.
