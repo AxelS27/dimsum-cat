@@ -31,5 +31,11 @@ __pycache__/
 # Claude Code settings
 .claude/
 
-# Temp
+# Temp & scratch
 _tts_tmp/
+_scratch/
+*.tmp
+*_preview*.png
+*crop_preview*/
+debug_cells/
+test_crop/

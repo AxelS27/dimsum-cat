@@ -47,3 +47,10 @@ design PNG → scripts/gridder → crop → ESRGAN 4x (GPU) → remove_bg → an
 | Tae-ho | `assets/sprites/taeho/` | Tiger king, always elite roles |
 
 See `docs/PLAYBOOK.md` for full character and story rules.
+
+## Workspace Hygiene (Wajib Dipatuhi)
+
+- **Jangan tinggalkan file sampah atau preview** (`*_preview*.png`, `*crop_preview*/`, `debug_cells/`, `test_crop/`, `*.tmp`, `_tts_tmp/`) di dalam repo setelah selesai. Hapus semua file sementara sebelum mengakhiri task.
+- **Gunakan `scripts/gridder`** + config JSON untuk memproses sprite baru. Jangan membuat script ad-hoc baru di `scripts/` untuk satu karakter saja.
+- **File eksperimen sementara** (jika benar-benar diperlukan) harus ditaruh di `_scratch/` (sudah di-gitignore) dan tetap dibersihkan setelah selesai.
+- **Cek `git status`** sebelum selesai memastikan tidak ada file sementara atau script sekali pakai yang tertinggal.
