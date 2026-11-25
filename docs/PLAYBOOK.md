@@ -9,7 +9,7 @@
 ## How to Use
 
 Tell the AI agent:
-> "Buat animasi baru tentang [topic/idea] pakai karakter [character]. Ikuti rules di docs/PLAYBOOK.md."
+> "Create a new animation about [topic/idea] using [character]. Follow the rules in docs/PLAYBOOK.md."
 
 ### AI Generation Flow
 

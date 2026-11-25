@@ -25,12 +25,12 @@ story.yaml (or story.json) → video_generator.py → video.mp4 (with TTS + BGM)
 ```
 
 - Start TTS server first if `tts: true` in story.yaml / story.json (for `gpt_sovits`; `tts_engine: "edge"` needs no local server)
-- **Agentic Workflow (AX) — Wajib diikuti saat membuat/mengedit video:**
-  1. Jalankan `.venv\Scripts\python video_generator.py --describe` untuk mendapat daftar live karakter, animasi, musik, SFX, preset kamera/motion/VFX, dan `beat_presets` dalam 1 JSON.
-  2. Tulis `story.yaml` (manfaatkan `preset`, `bpm`, `scale_to`/`delay`, `text_anim`, `attach_to` bila perlu).
-  3. Validasi cepat: `.venv\Scripts\python video_generator.py --story content/<category>/<name> --validate --json`
-  4. Inspeksi visual (opsional tapi disarankan): `--storyboard` menghasilkan `storyboard.png` untuk dicek via `read_file` (hapus `storyboard.png` setelah selesai jika tidak diperlukan).
-  5. Render draft (`--preview`) atau final: `.venv\Scripts\python video_generator.py --story content/<category>/<name>` (tambah `--json` untuk output terstruktur).
+- **Agentic Workflow (AX) — Always follow when creating/editing videos:**
+  1. Run `.venv\Scripts\python video_generator.py --describe` to get the live JSON catalog of characters, animations, music, SFX, camera/motion/VFX presets, and `beat_presets`.
+  2. Write `story.yaml` (use `preset`, `bpm`, `scale_to`/`delay`, `text_anim`, and `attach_to` where helpful).
+  3. Fast pre-flight check: `.venv\Scripts\python video_generator.py --story content/<category>/<name> --validate --json`
+  4. Visual self-check (recommended): `--storyboard` generates `storyboard.png` for inspection via `read_file` (delete `storyboard.png` afterward if not needed).
+  5. Render draft (`--preview`) or final: `.venv\Scripts\python video_generator.py --story content/<category>/<name>` (add `--json` for structured output).
 - Output: `content/<category>/<name>/video.mp4`
 
 ## Sprite Pipeline (Gridder)
@@ -52,12 +52,12 @@ See `docs/PLAYBOOK.md` for full story, character, and content rules.
 
 ## Story & Subtitle Rules
 
-- **Utamakan `text` (title utama) saja** — `100%` English, singkat, dan punchy.
-- **Jangan terlalu sering pakai `sub`** — `sub` hanya dipakai untuk momen tertentu saja (misal bisikan, internal monologue, atau stage direction). Jika `text` sudah jelas, kosongkan/hapus `sub`.
+- **Prioritize `text` (main title) only** — 100% English, short, and punchy.
+- **Do NOT overuse `sub`** — use `sub` only for specific moments (e.g., whispers, internal monologue, or stage directions). If `text` is already clear, leave `sub` empty or omit it.
 
-## Workspace Hygiene (Wajib Dipatuhi)
+## Workspace Hygiene (Mandatory)
 
-- **Jangan tinggalkan file sampah atau preview** (`*_preview*.png`, `*crop_preview*/`, `debug_cells/`, `test_crop/`, `*.tmp`, `_tts_tmp/`) di dalam repo setelah selesai. Hapus semua file sementara sebelum mengakhiri task.
-- **Gunakan `scripts/gridder`** + config JSON untuk memproses sprite baru. Jangan membuat script ad-hoc baru di `scripts/` untuk satu karakter saja.
-- **File eksperimen sementara** (jika benar-benar diperlukan) harus ditaruh di `_scratch/` (sudah di-gitignore) dan tetap dibersihkan setelah selesai.
-- **Cek `git status`** sebelum selesai memastikan tidak ada file sementara atau script sekali pakai yang tertinggal.
+- **Do not leave scratch or preview files behind** (`*_preview*.png`, `storyboard*.png`, `*crop_preview*/`, `debug_cells/`, `test_crop/`, `*.tmp`, `_tts_tmp/`) in the repo after finishing. Delete all temporary files before ending the task.
+- **Use `scripts/gridder`** + JSON configs to process new sprites. Do not create one-off ad-hoc scripts in `scripts/` for a single character.
+- **Temporary experiment files** (if truly needed) must go in `_scratch/` (gitignored) and still be cleaned up afterward.
+- **Check `git status`** before finishing to ensure no temporary files or one-off scripts remain.
