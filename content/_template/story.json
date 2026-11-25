@@ -12,7 +12,8 @@
   "duration": 30.0,
 
   "tts": false,
-  "gpt_sovits_ref": "../../assets/audio_reference/dimsum_cat_korean.mp3",
+  "tts_lang": "en",
+  "gpt_sovits_ref": "",
   "gpt_sovits_speed": 0.88,
   "gpt_sovits_server": "http://127.0.0.1:9880",
 
@@ -29,8 +30,8 @@
   "beats": [
     {
       "time": 0.0,
-      "text": "텍스트",
-      "sub": "subtitle / translation",
+      "text": "Hello bestie!",
+      "sub": "",
       "animation": "normal_talk",
       "character": "",
       "pos": "center",

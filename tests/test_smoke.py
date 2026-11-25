@@ -75,13 +75,14 @@ class EngineSmokeTests(unittest.TestCase):
     def test_validate_story_catches_missing_animation_and_hangul(self) -> None:
         template_dir = ROOT / "content" / "_template"
         cfg = load_story_file(template_dir, build_parser().parse_args([]))
-        # Template has Hangul placeholder "텍스트"
+        # Template uses clean English text
         errs = validate_story(cfg)
-        self.assertTrue(any("Hangul" in e for e in errs))
+        self.assertEqual(errs, [])
 
-        cfg.beats[0].text = "Clean English"
+        cfg.beats[0].text = "안녕"
         cfg.beats[0].animation = "nonexistent_animation_xyz"
         errs2 = validate_story(cfg)
+        self.assertTrue(any("Hangul" in e for e in errs2))
         self.assertTrue(any("missing animation" in e for e in errs2))
 
 

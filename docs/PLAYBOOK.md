@@ -38,8 +38,8 @@ Characters live in `assets/sprites/<character_name>/`. More characters will be a
 
 | Folder | Name | Personality | Voice Ref |
 |--------|------|-------------|-----------|
-| `dimsum_cat` | DIMsum Cat | cute kawaii cat girl, she/her, expressive, slightly dramatic | `assets/audio_reference/dimsum_cat_korean.mp3` |
-| `taeho` | 태호 (Tae-ho) | elegant tiger king, always wealthy/high-status roles (royalty, CEO, first class), calm and composed but loses composure around good food | *(no voice — reactions only)* |
+| `dimsum_cat` | DIMsum Cat | cute kawaii cat girl, she/her, expressive, slightly dramatic | *(English voice model TBD)* |
+| `taeho` | Tae-ho | elegant tiger king, always wealthy/high-status roles (royalty, CEO, first class), calm and composed but loses composure around good food | *(no voice — reactions only)* |
 
 > When a new character is added, update this table. Each character has its own animations folder and voice reference audio.
 
@@ -53,10 +53,11 @@ Default character is `dimsum_cat` unless overridden at the root level with `"cha
 ### Universal Character & Language Rules
 - Visual `text` is always **English** (prominent, punchy, expressive English dialogue or caption).
 - `sub` is **strictly optional**: Only use when there is a genuine secondary whisper, internal monologue, or stage direction (e.g. `*(internal panic)*` or `(whispering)`). **Do NOT add `sub` to every beat** — double subtitles cause viewer fatigue. If the main line is clear, omit `sub` completely!
-- **NO Korean Hangul visually on screen** in `text`, `sub`, or `rich_text`.
-- **TTS voiceover (switching to English)**:
+- **100% English**: Visual `text`, optional `sub`, and `tts_text` are all **English** (no Korean/Hangul anywhere).
+- **TTS voiceover**:
   - Currently `tts: false` by default while the English GPT-SoVITS voice model is still in progress.
-  - When `tts: true`, put English spoken lines in `tts_text` (or omit `tts_text` to fall back to `text`). `tts_lang` defaults to `"auto"` (auto-detects `"en"` vs `"ko"`).
+  - For quick draft pacing tests, you can use `"tts": true, "tts_engine": "edge"` (uses `edge-tts`).
+  - When `tts: true`, put English spoken lines in `tts_text` (or omit `tts_text` to fall back to `text`), with `"tts_lang": "en"`.
 - **Never use emoji in `text`** (fonts don't support color emoji glyphs). Emoji is OK in `description` and `pinned_comment`.
 
 ### Animations — ALWAYS Check the Folder
@@ -76,18 +77,17 @@ New animations may be added at any time. Pick the ones that best fit the emotion
 
 ### Master Hashtags (used in ALL videos)
 ```
-#dimsumcat #kawaii #fyp #foryou #viral #kpop #kdrama #cdrama #anime #cute #blowthisup #xyzbca #trending #coquette #softlife
+#dimsumcat #kawaii #fyp #foryou #viral #animation #cute #blowthisup #xyzbca #trending #coquette #softlife #catsoftiktok
 ```
 
 ### Per-Category Hashtags (add on top of master)
 
 | Category | Extra Hashtags |
 |----------|---------------|
-| Story | `#crush #firstlove #schoolcrush #lovestory #romance #relatable #storytime` |
+| Story | `#crush #firstlove #lovestory #romance #relatable #storytime` |
 | POV | `#pov #povstory #scenario #relatable #storytime` |
-| K-pop | `#kpop #kpopfyp #newjeans #aespa #ive #bts #stayc #kpopcover #kpopdance` |
-| Tutorial | `#learnkorean #korean101 #koreanwords #studykorean #hangul #koreanculture` |
-| K-Drama | `#kdrama #koreandrama #dramarecap #kdramaclip #dramaOST #goblin #cloy #queentears` |
+| Comedy / Slapstick | `#comedy #funny #memes #relatable #catmemes` |
+| Interactive | `#interactive #minigame #challenge #fyp` |
 
 ### Description Format
 ```
@@ -127,28 +127,22 @@ Background color (`bg`) should always **match the mood of the video** — not lo
 - Last beat: ~2s before `duration` end
 
 ### Beat Count
-- Story / K-Drama: **6–9 beats**
+- Story / Drama: **6–9 beats**
 - POV: **4–6 beats**
-- Tutorial: **4–7 beats**
-- K-pop: **4–7 beats** (TTS sings/reacts along with music)
+- Comedy / Interactive: **4–7 beats**
 
 ### Beat Writing Rules
 - `text`: short, punchy English — **max ~15–20 chars per line** for readability
 - `sub`: strictly optional English secondary line (internal monologue, whisper, or stage direction) — omit when `text` is already clear
-- `tts_text`: optional spoken override when `tts: true` (English going forward; falls back to `text` if omitted)
+- `tts_text`: optional English spoken override when `tts: true` (falls back to `text` if omitted)
 - Arc: setup → escalation → reaction → resolution/punchline
 - End on a strong beat
 - Silent dramatic pause: `"text": "...."` with `side_eye` or `sulking`
 
-### TTS Minimum Length Rule (Legacy Korean Model Only)
-- Applies only if using the legacy Korean GPT-SoVITS model: each Korean `tts_text` beat needs **at least 7 Korean syllables** (가–힣) to avoid pitch wobble. Not needed for English or when `tts: false`.
-
 ### Voice & Tone — Talk Like a Bestie
 DIMsum Cat speaks to viewers like a close best friend — casual, warm, direct:
-- Use informal speech endings: **야, 어, 지, 거든, 잖아, 했잖아** — never formal 요/습니다
-- Address the viewer directly: **너, 야, 우리** — never 여러분 or 시청자
-- Reactions feel genuine: **어머, 헐, 진짜**, not scripted
-- Questions invite the viewer in: **기다렸지? 알지? 해봤어?**
+- Conversational, punchy English ("Wait, seriously?", "No way...", "Hold on—")
+- Reactions feel genuine and expressive, not scripted
 - Energy matches a bestie telling a story, not a presenter giving a speech
 
 ### Scale & Position
@@ -161,13 +155,13 @@ DIMsum Cat speaks to viewers like a close best friend — casual, warm, direct:
 
 ## Content Categories
 
-### 1. Story (연애 스토리)
-Relatable love/crush mini-story.
+### 1. Story
+Relatable love/crush or slice-of-life mini-story.
 
 ```
 bg: match mood (see Background Color Rules)
-tts: true
-bg_music: ../../assets/music/love_maybe.mp3
+tts: false
+bg_music: ../../../assets/music/love_maybe.mp3
 description: caption + master # + story #
 ```
 
@@ -177,12 +171,12 @@ Suggested animation mood: expressive talking, excitement, embarrassment, side-ey
 
 ---
 
-### 2. POV (POV 시리즈)
-Relatable scenario. First beat opens with "POV:" in Korean.
+### 2. POV
+Relatable scenario. First beat opens with `"POV:"`.
 
 ```
 bg: match mood (see Background Color Rules)
-tts: true
+tts: false
 bg_music: lo-fi track
 first beat text: "POV:" + scenario
 description: caption + master # + pov #
@@ -194,62 +188,20 @@ Suggested animation mood: shock, panic, escalating reaction, punchline — check
 
 ---
 
-### 3. K-pop (케이팝 시리즈)
-DIMsum Cat **sings along** to the viral K-pop moment with TTS voice + reacts with animations.
+### 3. Comedy / Interactive
+Fast-paced slapstick, rhythm, or interactive mini-game videos.
 
 ```
 bg: match mood (see Background Color Rules)
-tts: true
-bg_music: path to K-pop track (TTS voice sings over the music)
-gpt_sovits_speed: 1.0 (match song tempo)
-description: caption + master # + kpop #
+tts: false
+bg_music: upbeat or playful track
+description: caption + master # + comedy/interactive #
 ```
 
 Beat rules:
-- `text` = English lyric / punchy line on screen
-- `tts_text` = Korean lyrics of the viral part (phonetically or actual lyrics)
-- `sub` = optional English context / lyric note if needed
-- Time beats tightly to the song's rhythm
-- High-energy animations on the drop: mini_twirl, happy_bounce, cheering, clapping
-- End with finger_heart or blow_kiss
-- Use `tts_speed: 1.05–1.15` on chorus beats to match song energy
-
----
-
-### 4. Korean Tutorial (한국어 배우기)
-One Korean word or phrase per video.
-
-```
-bg: match mood (see Background Color Rules)
-tts: true
-bg_music: gentle lo-fi
-description: caption + master # + tutorial #
-```
-
-Beat flow: Hook ("이 단어 알아?") → Show word → Pronunciation → Meaning reveal → Example sentence → Use in context → Closing
-
-Suggested animation mood: curious, explaining, listening, cute reveal, closing — check folder for actual names
-
----
-
-### 5. K-Drama Recreate (드라마 재현)
-Iconic scene from a Korean drama, acted out by DIMsum Cat.
-
-```
-bg: match mood (see Background Color Rules)
-tts: true
-bg_music: drama OST
-first beat sub: "[Drama Title] — [scene context]"
-description: caption + master # + kdrama #
-```
-
-Beat rules:
-- Keep on-screen `text` short and punchy in English, with iconic Korean dialogue in `tts_text`
-- Build to the most iconic line
-- End on emotional peak
-- Use OST as bg_music for instant fan recognition
-
-Suggested animation mood: romantic, shy, emotional peak, dramatic — check folder for actual names
+- Time beats tightly to SFX or music rhythm
+- High-energy animations, camera punches, and VFX bursts
+- End on a strong punchline or payoff
 
 ---
 
@@ -279,18 +231,18 @@ Save as `content/<name>/story.json`:
 ```json
 {
   "title": "English title",
-  "description": "Your caption 🐱\n\n#dimsumcat #kawaii #fyp #foryou #viral #kpop #kdrama #cdrama #anime #cute #blowthisup #xyzbca #trending #coquette #softlife\n[category hashtags here]",
+  "description": "Your caption 🐱\n\n#dimsumcat #kawaii #fyp #foryou #viral #animation #cute #blowthisup #xyzbca #trending #coquette #softlife #catsoftiktok\n[category hashtags here]",
 
   "animation": "normal_talk",
   "bg": "#f5f0ec",
 
   "tts": false,
   "tts_lang": "en",
-  "gpt_sovits_ref": "../../assets/audio_reference/dimsum_cat_korean.mp3",
+  "gpt_sovits_ref": "",
   "gpt_sovits_server": "http://127.0.0.1:9880",
   "gpt_sovits_speed": 0.88,
 
-  "bg_music": "../../assets/music/love_maybe.mp3",
+  "bg_music": "../../../assets/music/love_maybe.mp3",
 
   "beats": [
     {

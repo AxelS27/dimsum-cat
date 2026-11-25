@@ -50,13 +50,13 @@ from src.output import (
 # ---------------------------------------------------------------------------
 
 DEFAULT_STORY = [
-    StoryBeat(time=0.0,  text="진짜..?",    sub="Really..?",
+    StoryBeat(time=0.0,  text="Wait really..?", sub="",
               animation="normal_talk",  pos="center",     scale=1.0,  text_size="big"),
-    StoryBeat(time=3.0,  text="나 좋아해?", sub="You like me?",
+    StoryBeat(time=3.0,  text="You like me?",  sub="",
               animation="shy_blush",    pos="right",      scale=1.25, text_size="huge"),
-    StoryBeat(time=6.5,  text="ㅋㅋㅋ",     sub="lol",
+    StoryBeat(time=6.5,  text="No way lol",    sub="",
               animation="excited_talk", pos="center-low", scale=0.85, text_size="normal"),
-    StoryBeat(time=9.5,  text="❤",          sub="",
+    StoryBeat(time=9.5,  text="Love you!",     sub="",
               animation="finger_heart", pos="center",     scale=1.4,  text_size="huge"),
 ]
 
@@ -248,8 +248,8 @@ def load_story_file(path: Path, args: argparse.Namespace) -> RenderConfig:
         gpt_sovits_prompt_text = data.get("gpt_sovits_prompt_text", ""),
         tts_pitch_normalize    = bool(data.get("tts_pitch_normalize", False)),
         tts_pitch_target       = float(data.get("tts_pitch_target", 0.0)),
-        tts_lang               = str(data.get("tts_lang", "auto")),
-        tts_prompt_lang        = str(data.get("tts_prompt_lang", "ko")),
+        tts_lang               = str(data.get("tts_lang", "en")),
+        tts_prompt_lang        = str(data.get("tts_prompt_lang", "en")),
         tts_engine             = str(data.get("tts_engine", "gpt_sovits")),
         edge_voice             = str(data.get("edge_voice", "en-US-JennyNeural")),
         bg_music          = _resolve_story_path(data.get("bg_music", args.bg_music), story_dir),
