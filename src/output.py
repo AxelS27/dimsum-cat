@@ -13,6 +13,34 @@ from src.utils import find_ffmpeg
 # Output
 # ---------------------------------------------------------------------------
 
+_NVENC_AVAILABLE: bool | None = None
+
+
+def _supports_nvenc(ffmpeg: str) -> bool:
+    """Return True if ffmpeg supports h264_nvenc on this machine (cached)."""
+    global _NVENC_AVAILABLE
+    if _NVENC_AVAILABLE is not None:
+        return _NVENC_AVAILABLE
+    try:
+        res = subprocess.run(
+            [ffmpeg, "-hide_banner", "-encoders"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            timeout=5,
+        )
+        _NVENC_AVAILABLE = "h264_nvenc" in (res.stdout or "")
+    except Exception:
+        _NVENC_AVAILABLE = False
+    return _NVENC_AVAILABLE
+
+
+def _video_encoder_args(ffmpeg: str) -> list[str]:
+    """Return optimal H.264 encoder flags (h264_nvenc on GPU, libx264 fallback)."""
+    if _supports_nvenc(ffmpeg):
+        return ["-c:v", "h264_nvenc", "-cq", "18", "-preset", "p4", "-rc", "vbr"]
+    return ["-c:v", "libx264", "-crf", "18", "-preset", "veryfast"]
+
 def stream_to_mp4(
     frame_iterator: Iterator[Image.Image],
     mp4_path: Path,
@@ -57,10 +85,7 @@ def stream_to_mp4(
         "-r", str(fps),
         "-i", "pipe:0",
         "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2",
-        "-c:v", "h264_nvenc",
-        "-cq", "18",
-        "-preset", "p4",
-        "-rc", "vbr",
+        *_video_encoder_args(ffmpeg),
         "-pix_fmt", "yuv420p",
         *metadata,
         str(mp4_path),

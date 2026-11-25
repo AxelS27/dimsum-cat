@@ -24,8 +24,13 @@ GPT-SoVITS runs as a local API server on `http://127.0.0.1:9880`.
 story.yaml (or story.json) → video_generator.py → video.mp4 (with TTS + BGM)
 ```
 
-- Start TTS server first if `tts: true` in story.yaml / story.json
-- Render: `.venv\Scripts\python video_generator.py --story content/<category>/<name>`
+- Start TTS server first if `tts: true` in story.yaml / story.json (for `gpt_sovits`; `tts_engine: "edge"` needs no local server)
+- **Agentic Workflow (AX) — Wajib diikuti saat membuat/mengedit video:**
+  1. Jalankan `.venv\Scripts\python video_generator.py --describe` untuk mendapat daftar live karakter, animasi, musik, SFX, preset kamera/motion/VFX, dan `beat_presets` dalam 1 JSON.
+  2. Tulis `story.yaml` (manfaatkan `preset`, `bpm`, `scale_to`/`delay`, `text_anim`, `attach_to` bila perlu).
+  3. Validasi cepat: `.venv\Scripts\python video_generator.py --story content/<category>/<name> --validate --json`
+  4. Inspeksi visual (opsional tapi disarankan): `--storyboard` menghasilkan `storyboard.png` untuk dicek via `read_file` (hapus `storyboard.png` setelah selesai jika tidak diperlukan).
+  5. Render draft (`--preview`) atau final: `.venv\Scripts\python video_generator.py --story content/<category>/<name>` (tambah `--json` untuk output terstruktur).
 - Output: `content/<category>/<name>/video.mp4`
 
 ## Sprite Pipeline (Gridder)

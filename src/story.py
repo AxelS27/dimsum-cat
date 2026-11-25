@@ -1028,7 +1028,16 @@ def main() -> None:
 
     result = render(cfg, **kwargs)
 
-    print_result(result)
+    if getattr(args, "json_output", False):
+        print(json.dumps({
+            "ok": True,
+            "mp4": str(result["mp4"]) if result.get("mp4") else None,
+            "gif": str(result["gif"]) if result.get("gif") else None,
+            "duration": cfg.duration,
+            "beats": len(cfg.beats),
+        }, indent=2))
+    else:
+        print_result(result)
 
 
 if __name__ == "__main__":

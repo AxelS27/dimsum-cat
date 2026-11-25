@@ -6,6 +6,7 @@ from pathlib import Path
 
 from src.camera import compute_camera
 from src.models import Accessory, ActorConfig, StoryBeat
+from src.output import _video_encoder_args
 from src.renderer import _fast_resize, _fast_rotate, iter_video_frames
 from src.story import build_parser, describe_capabilities, load_story_file, render_storyboard, validate_story
 from src.tts import _detect_emotion, _resolve_tts_lang, _should_speak
@@ -221,6 +222,13 @@ class EngineSmokeTests(unittest.TestCase):
             self.assertEqual(pcfg.beats[1].motion, "heavy_bounce")
             sb_path = render_storyboard(pcfg, Path(tmp) / "storyboard.png")
             self.assertTrue(sb_path.exists())
+
+    def test_video_encoder_args_returns_valid_codec(self) -> None:
+        from src.utils import find_ffmpeg
+        ffmpeg = find_ffmpeg() or "ffmpeg"
+        args = _video_encoder_args(ffmpeg)
+        self.assertIn("-c:v", args)
+        self.assertTrue("h264_nvenc" in args or "libx264" in args)
 
 
 if __name__ == "__main__":
