@@ -190,6 +190,7 @@ description: caption + master # + #dance #cute #animation
 ```
 
 Beat rules:
+- Set `"bpm": <tempo>` (and optional `"beat_offset": 0.0`, `"auto_beat_zoom": 0.05`) at root to use `"beat": 0, 1, 2...` instead of manual seconds
 - Sync beat timestamps and `camera: "zoom_punch"` to the music beat/drop
 - Combine `motion` (`squash_bounce`, `sway_tilt`, `anticipate_hop`) with `vfx` (`music_notes`, `sparkles`, `floating_hearts`)
 - Optional short English hype captions in `text`

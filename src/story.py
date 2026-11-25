@@ -186,9 +186,21 @@ def load_story_file(path: Path, args: argparse.Namespace) -> RenderConfig:
     else:
         data = json.loads(raw_text) or {}
     raw_beats = data.get("beats", [])
+    bpm = float(data["bpm"]) if data.get("bpm") is not None else None
+    beat_offset = float(data.get("beat_offset", 0.0))
+
+    def _resolve_beat_time(b: dict) -> float:
+        if "time" in b and b["time"] is not None:
+            return float(b["time"])
+        if "beat" in b and b["beat"] is not None:
+            if not bpm or bpm <= 0:
+                raise ValueError("Beat uses 'beat' index but root 'bpm' is missing or <= 0.")
+            return beat_offset + float(b["beat"]) * (60.0 / bpm)
+        raise ValueError("Each beat must specify 'time' (seconds) or 'beat' (with root 'bpm').")
+
     beats = [
         StoryBeat(
-            time            = b["time"],
+            time            = _resolve_beat_time(b),
             text            = b.get("text", ""),
             sub             = b.get("sub", ""),
             tts_text        = str(b.get("tts_text", "")),
@@ -273,6 +285,9 @@ def load_story_file(path: Path, args: argparse.Namespace) -> RenderConfig:
         intro_gap         = float(data.get("intro_gap", 0.8)),
         between_gap       = float(data.get("between_gap", 0.65)),
         silent_beat_dur   = float(data.get("silent_beat_dur", 1.5)),
+        bpm               = bpm,
+        beat_offset       = beat_offset,
+        auto_beat_zoom    = float(data.get("auto_beat_zoom", 0.0)),
         save_frames       = getattr(args, "save_frames", False),
     )
 

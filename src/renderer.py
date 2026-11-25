@@ -503,6 +503,12 @@ def iter_video_frames(
             cam_start=beat_cam_start,
         )
         last_cam_state = cam
+        if config.bpm and config.bpm > 0 and config.auto_beat_zoom > 0.0:
+            bt = t - config.beat_offset
+            if bt >= 0.0:
+                beat_period = 60.0 / config.bpm
+                phase = (bt % beat_period) / beat_period
+                cam.zoom += math.exp(-phase * 5.0) * config.auto_beat_zoom
 
         # ----------------------------------------------------------------
         # Compose Background with Virtual Camera

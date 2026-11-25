@@ -111,6 +111,31 @@ class EngineSmokeTests(unittest.TestCase):
         self.assertEqual(len(frames), 6)
         self.assertEqual(frames[0].size, (360, 640))
 
+    def test_bpm_beat_resolution_and_auto_beat_zoom(self) -> None:
+        import json, tempfile
+        story_data = {
+            "title": "Dance Beat Test",
+            "duration": 1.0,
+            "fps": 10,
+            "width": 360,
+            "height": 640,
+            "bpm": 120,
+            "beat_offset": 0.1,
+            "auto_beat_zoom": 0.06,
+            "beats": [
+                {"beat": 0, "text": "One!", "animation": "normal_talk"},
+                {"beat": 1, "text": "Two!", "animation": "normal_talk"},
+            ],
+        }
+        with tempfile.TemporaryDirectory() as tmp:
+            p = Path(tmp) / "story.json"
+            p.write_text(json.dumps(story_data), encoding="utf-8")
+            cfg = load_story_file(p, build_parser().parse_args([]))
+            self.assertAlmostEqual(cfg.beats[0].time, 0.1)
+            self.assertAlmostEqual(cfg.beats[1].time, 0.6)
+            frames = list(iter_video_frames(cfg))
+            self.assertEqual(len(frames), 10)
+
 
 if __name__ == "__main__":
     unittest.main()

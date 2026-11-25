@@ -307,4 +307,7 @@ class RenderConfig:
     save_frames:        bool  = False   # save intermediate PNG frames to disk (default: stream via pipe)
     intro_gap:          float = 0.8   # first retimed beat offset; set 0.0 for instant hook text
     between_gap:        float = 0.65  # retimed gap after each spoken beat
+    bpm:                float | None = None  # optional music tempo (beats per minute)
+    beat_offset:        float = 0.0   # seconds before musical beat 0
+    auto_beat_zoom:     float = 0.0   # subtle camera zoom pulse on every musical beat (e.g. 0.05)
     silent_beat_dur:    float = 1.5   # retimed duration for silent/punctuation beats
