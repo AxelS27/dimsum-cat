@@ -1,0 +1,429 @@
+# ==============================================================================
+# Rock Paper Scissors Food Challenge — Bear Couple Slapstick
+# ==============================================================================
+title: "Batu Gunting Kertas Makanan Berujung Maut"
+description: >
+  Tren suit batu gunting kertas makanan berujung slapstick maut! 🐻🍕💨
+  Si cowok serakah habisin semua makanan pas ceweknya disuruh lari bolak-balik...
+  Endingnya langsung kena tendangan terbang mental ke langit! 🚀💥
+
+  #bluey #couple #slapstick #funny #animation #reels #fyp #comedy #cartoon #rockpaperscissors
+
+fps: 24
+width: 1080
+height: 1920
+duration: 20.5
+bg: "#eef5ea"
+bg_image: "assets/backgrounds/bluey_backyard.jpg"
+character: "bear_boy"
+default_animation: "suit_rock"
+
+tts: false
+bg_music: "assets/music/yummy_flavor.mp3"
+bg_music_start: "00:00"
+bg_volume: 0.70
+bg_music_fade_in: 0.0
+
+intro_gap: 0.0
+between_gap: 0.0
+silent_beat_dur: 1.0
+
+watermark: ""
+pinned_comment: "Pernah punya temen/pasangan yang makannya maruk kayak gini gak? 😂👇"
+
+# ==============================================================================
+# Beats Timeline
+# ==============================================================================
+beats:
+  # Beat 1: Ronde 1 - Suit! (0.00s - 2.50s)
+  - time: 0.00
+    text: "GUNTING BATU KERTAS! ✊✌️"
+    sub: "Rock-Paper-Scissors Food Challenge!"
+    rich_text:
+      - text: "GUNTING BATU "
+        color: "#2C3E50"
+      - text: "KERTAS! ✊✌️"
+        color: "#E67E22"
+    text_size: "big"
+    camera: "crash_zoom"
+    camera_intensity: 0.8
+    actors:
+      - character: "bear_props"
+        animation: "table"
+        pos: [0.50, 0.78]
+        scale: 0.58
+        ground_shadow: false
+        z_index: 0
+      - character: "bear_props"
+        animation: "plate_full"
+        pos: [0.50, 0.71]
+        scale: 0.38
+        ground_shadow: false
+        z_index: 1
+      - character: "bear_boy"
+        animation: "suit_rock"
+        pos: [0.26, 0.74]
+        scale: 0.52
+        ground_shadow: true
+        z_index: 2
+      - character: "bear_girl"
+        animation: "suit_scissors"
+        pos: [0.74, 0.74]
+        scale: 0.52
+        flip_x: true
+        ground_shadow: true
+        z_index: 2
+
+  # Beat 2: Cewek Lari Sprint, Cowok Mulai Serbu Makanan! (2.50s - 4.80s)
+  - time: 2.50
+    text: "LARI SENTUH TEMBOK! 🏃‍♀️💨"
+    sub: "Touch the wall and come back!"
+    rich_text:
+      - text: "LARI SENTUH "
+        color: "#2C3E50"
+      - text: "TEMBOK! 🏃‍♀️💨"
+        color: "#E74C3C"
+    text_size: "big"
+    camera: "static"
+    actors:
+      - character: "bear_props"
+        animation: "table"
+        pos: [0.50, 0.78]
+        scale: 0.58
+        ground_shadow: false
+        z_index: 0
+      - character: "bear_props"
+        animation: "plate_full"
+        pos: [0.50, 0.71]
+        scale: 0.38
+        ground_shadow: false
+        z_index: 1
+      - character: "bear_boy"
+        animation: "eat_snatch"
+        pos: [0.32, 0.74]
+        scale: 0.53
+        motion: "squash_bounce"
+        ground_shadow: true
+        z_index: 2
+      - character: "bear_girl"
+        animation: "run"
+        pos: [0.74, 0.74]
+        path: [[0.74, 0.74], [0.98, 0.74], [0.74, 0.74]]
+        auto_flip: true
+        auto_tilt: true
+        move_speed: 1.3
+        scale: 0.50
+        ground_shadow: true
+        z_index: 2
+
+  # Beat 3: Cewek Balik Ngos-ngosan, Makanan Sisa 50%! (4.80s - 7.00s)
+  - time: 4.80
+    text: "KOK UDAH SISA SETENGAH?! 😭"
+    sub: "Half the pizza is already gone?!"
+    rich_text:
+      - text: "KOK UDAH SISA "
+        color: "#2C3E50"
+      - text: "SETENGAH?! 😭"
+        color: "#D35400"
+    text_size: "big"
+    camera: "zoom_punch"
+    camera_intensity: 1.1
+    vfx:
+      - type: "sweat_drops"
+        target: "bear_girl"
+        count: 5
+    actors:
+      - character: "bear_props"
+        animation: "table"
+        pos: [0.50, 0.78]
+        scale: 0.58
+        ground_shadow: false
+        z_index: 0
+      - character: "bear_props"
+        animation: "plate_half"
+        pos: [0.50, 0.71]
+        scale: 0.38
+        ground_shadow: false
+        z_index: 1
+      - character: "bear_boy"
+        animation: "eat_chew"
+        pos: [0.28, 0.74]
+        scale: 0.52
+        motion: "breathe"
+        ground_shadow: true
+        z_index: 2
+      - character: "bear_girl"
+        animation: "pant_tired"
+        pos: [0.74, 0.74]
+        scale: 0.52
+        flip_x: true
+        motion: "shiver_rumble"
+        ground_shadow: true
+        z_index: 2
+
+  # Beat 4: Ronde 2 - Suit Tegang! (7.00s - 9.20s)
+  - time: 7.00
+    text: "RONDE DUA! GW HARUS MAKAN! 🔥"
+    sub: "Round 2! I'm definitely eating this time!"
+    rich_text:
+      - text: "RONDE DUA! "
+        color: "#2C3E50"
+      - text: "GW HARUS MAKAN! 🔥"
+        color: "#C0392B"
+    text_size: "big"
+    camera: "crash_zoom"
+    camera_intensity: 1.0
+    actors:
+      - character: "bear_props"
+        animation: "table"
+        pos: [0.50, 0.78]
+        scale: 0.58
+        ground_shadow: false
+        z_index: 0
+      - character: "bear_props"
+        animation: "plate_half"
+        pos: [0.50, 0.71]
+        scale: 0.38
+        ground_shadow: false
+        z_index: 1
+      - character: "bear_boy"
+        animation: "suit_scissors"
+        pos: [0.26, 0.74]
+        scale: 0.52
+        ground_shadow: true
+        z_index: 2
+      - character: "bear_girl"
+        animation: "suit_paper"
+        pos: [0.74, 0.74]
+        scale: 0.52
+        flip_x: true
+        ground_shadow: true
+        z_index: 2
+
+  # Beat 5: Cowok Menang Lagi! Mode Vacuum Cleaner! (9.20s - 11.80s)
+  - time: 9.20
+    text: "MENANG LAGI! SEDOOOTTT!! 🌪️🍕"
+    sub: "Vacuum cleaner beast mode activated!"
+    rich_text:
+      - text: "MENANG LAGI! "
+        color: "#27AE60"
+      - text: "SEDOOOTTT!! 🌪️🍕"
+        color: "#E67E22"
+    text_size: "big"
+    camera: "rumble"
+    camera_intensity: 0.6
+    actors:
+      - character: "bear_props"
+        animation: "table"
+        pos: [0.50, 0.78]
+        scale: 0.58
+        ground_shadow: false
+        z_index: 0
+      - character: "bear_props"
+        animation: "plate_half"
+        pos: [0.50, 0.71]
+        scale: 0.38
+        ground_shadow: false
+        z_index: 1
+      - character: "bear_props"
+        animation: "food_flying"
+        pos: [0.42, 0.67]
+        scale: 0.28
+        ground_shadow: false
+        z_index: 2
+      - character: "bear_boy"
+        animation: "eat_vacuum"
+        pos: [0.32, 0.74]
+        scale: 0.54
+        motion: "squash_bounce"
+        ground_shadow: true
+        z_index: 3
+      - character: "bear_girl"
+        animation: "run"
+        pos: [0.74, 0.74]
+        path: [[0.74, 0.74], [0.99, 0.74], [0.74, 0.74]]
+        auto_flip: true
+        auto_tilt: true
+        move_speed: 1.5
+        scale: 0.50
+        ground_shadow: true
+        z_index: 2
+
+  # Beat 6: Piring Licin Kinclong & Sendawa Puas (11.80s - 14.00s)
+  - time: 11.80
+    text: "*BURRRRP!* ENYAAKK BANGET~ 😋"
+    sub: "All gone! Thanks for the delicious meal~"
+    rich_text:
+      - text: "*BURRRRP!* "
+        color: "#2C3E50"
+      - text: "ENYAAKK BANGET~ 😋"
+        color: "#27AE60"
+    text_size: "big"
+    camera: "slow_zoom_in"
+    camera_intensity: 0.8
+    actors:
+      - character: "bear_props"
+        animation: "table"
+        pos: [0.50, 0.78]
+        scale: 0.58
+        ground_shadow: false
+        z_index: 0
+      - character: "bear_props"
+        animation: "plate_empty"
+        pos: [0.50, 0.71]
+        scale: 0.38
+        ground_shadow: false
+        z_index: 1
+      - character: "bear_boy"
+        animation: "smug_burp"
+        pos: [0.26, 0.74]
+        scale: 0.52
+        motion: "breathe"
+        ground_shadow: true
+        z_index: 2
+      - character: "bear_girl"
+        animation: "shock_furious"
+        pos: [0.74, 0.74]
+        scale: 0.52
+        flip_x: true
+        motion: "shiver_rumble"
+        ground_shadow: true
+        z_index: 2
+
+  # Beat 7: Cewek Mode Iblis / Enraged Fire Aura! (14.00s - 16.00s)
+  - time: 14.00
+    text: "KAMU HABISIN SEMUANYAAA?! 💢👿"
+    sub: "YOU SERIOUSLY ATE EVERYTHING?!!"
+    rich_text:
+      - text: "KAMU HABISIN "
+        color: "#7B1FA2"
+      - text: "SEMUANYAAA?! 💢👿"
+        color: "#C0392B"
+    text_size: "big"
+    camera: "crash_zoom"
+    camera_intensity: 1.2
+    vfx:
+      - type: "anger_vein"
+        target: "bear_girl"
+        intensity: 2.0
+    actors:
+      - character: "bear_props"
+        animation: "table"
+        pos: [0.50, 0.78]
+        scale: 0.58
+        ground_shadow: false
+        z_index: 0
+      - character: "bear_props"
+        animation: "plate_empty"
+        pos: [0.50, 0.71]
+        scale: 0.38
+        ground_shadow: false
+        z_index: 1
+      - character: "bear_boy"
+        animation: "eat_swallow"
+        pos: [0.26, 0.74]
+        scale: 0.52
+        motion: "shiver_rumble"
+        ground_shadow: true
+        z_index: 2
+      - character: "bear_girl"
+        animation: "enraged_aura"
+        pos: [0.74, 0.74]
+        scale: 0.54
+        flip_x: true
+        motion: "squash_bounce"
+        ground_shadow: true
+        z_index: 2
+
+  # Beat 8: TENDANGAN MAUT! Mental Keluar Layar! (16.00s - 18.20s)
+  - time: 16.00
+    text: "RASAKAN TENDANGAN MAUUUTT!! 💥🚀"
+    sub: "TAKE THIS KICK TO OUTER SPACE!!"
+    rich_text:
+      - text: "RASAKAN TENDANGAN "
+        color: "#C0392B"
+      - text: "MAUUUTT!! 💥🚀"
+        color: "#E74C3C"
+    text_size: "huge"
+    camera: "zoom_punch"
+    camera_intensity: 1.6
+    sfx:
+      - file: "assets/sfx/frying-pan-smack.mp3"
+        volume: 1.3
+      - file: "assets/sfx/tom_scream.mp3"
+        volume: 1.2
+    actors:
+      - character: "bear_props"
+        animation: "table"
+        pos: [0.65, 0.78]
+        scale: 0.58
+        ground_shadow: false
+        z_index: 0
+      - character: "bear_props"
+        animation: "plate_empty"
+        pos: [0.65, 0.71]
+        scale: 0.38
+        ground_shadow: false
+        z_index: 1
+      - character: "bear_props"
+        animation: "impact_stars"
+        pos: [0.38, 0.64]
+        scale: 0.55
+        ground_shadow: false
+        z_index: 3
+      - character: "bear_girl"
+        animation: "kick_strike"
+        pos: [0.50, 0.72]
+        scale: 0.55
+        flip_x: true
+        motion: "anticipate_hop"
+        ground_shadow: true
+        z_index: 2
+      - character: "bear_boy"
+        animation: "hit_flying"
+        pos: [0.22, 0.65]
+        move_to: [-0.40, 0.15]
+        move_speed: 2.2
+        scale: 0.52
+        ground_shadow: false
+        z_index: 2
+
+  # Beat 9: Ending - Boy Knockout & Peaceful Yard (18.20s - 20.50s)
+  - time: 18.20
+    text: "Besok-besok jangan maruk ya... 😇✨"
+    sub: "Lesson learned: never eat everything alone."
+    rich_text:
+      - text: "Besok-besok "
+        color: "#2C3E50"
+      - text: "jangan maruk ya... 😇✨"
+        color: "#2980B9"
+    text_size: "big"
+    camera: "slow_zoom_out"
+    camera_intensity: 0.7
+    actors:
+      - character: "bear_props"
+        animation: "table"
+        pos: [0.50, 0.78]
+        scale: 0.58
+        ground_shadow: false
+        z_index: 0
+      - character: "bear_props"
+        animation: "plate_empty"
+        pos: [0.50, 0.71]
+        scale: 0.38
+        ground_shadow: false
+        z_index: 1
+      - character: "bear_girl"
+        animation: "suit_paper"
+        pos: [0.68, 0.74]
+        scale: 0.52
+        flip_x: true
+        motion: "breathe"
+        ground_shadow: true
+        z_index: 2
+      - character: "bear_boy"
+        animation: "knockout"
+        pos: [0.24, 0.84]
+        scale: 0.48
+        ground_shadow: false
+        z_index: 2
