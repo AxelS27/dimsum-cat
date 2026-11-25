@@ -39,14 +39,11 @@ design PNG → scripts/gridder → crop → ESRGAN 4x (GPU) → remove_bg → an
 - Output goes to `assets/sprites/<character>/animations/`
 - Preview first: `python scripts/gridder <design.png> --preview`
 
-## Characters
+## Characters (Character-Agnostic Studio)
 
-| Character | Folder | Notes |
-|-----------|--------|-------|
-| DIMsum Cat | `assets/sprites/dimsum_cat/` | Main character, she/her |
-| Tae-ho | `assets/sprites/taeho/` | Tiger king, always elite roles |
+**DIMsum Cat Studio** is a character-agnostic 2D animation framework for generating cute/funny short-form content (stories, POV, dance, comedy) for Instagram/TikTok/Shorts. There is no fixed main character — always check `assets/sprites/` for available characters and `assets/sprites/<character>/animations/` for their animations, and set `"character"` per story or per beat.
 
-See `docs/PLAYBOOK.md` for full character and story rules.
+See `docs/PLAYBOOK.md` for full story, character, and content rules.
 
 ## Story & Subtitle Rules
 

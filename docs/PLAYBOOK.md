@@ -1,54 +1,45 @@
-# DIMsum Cat — Story Generation Playbook
+# DIMsum Cat Studio — Animation & Story Playbook
 
-> Rule base for AI-assisted story generation.
-> To create a new video: tell the AI your idea, reference this file, and it will output a complete `story.json` ready to render.
+> Rule base for AI-assisted short-form animation generation.
+> **DIMsum Cat Studio** is a character-agnostic 2D animation framework for generating cute/funny animated content (stories, POVs, dances, comedy) for Instagram/TikTok/Shorts.
+> To create a new video: tell the AI your idea, reference this file, and it will output a complete `story.yaml` or `story.json` ready to render.
 
 ---
 
 ## How to Use
 
 Tell the AI agent:
-> "Buat story baru untuk DIMsum Cat tentang [topic/idea]. Ikuti rules di docs/PLAYBOOK.md."
+> "Buat animasi baru tentang [topic/idea] pakai karakter [character]. Ikuti rules di docs/PLAYBOOK.md."
 
 ### AI Generation Flow
 
-1. **Identify the character** being used (default: `dimsum_cat`; others may be added later)
+1. **Pick the character(s)** from `assets/sprites/` (no fixed main character — use whichever character fits the concept, or mix multiple characters via `actors`)
 2. **Check available animations** by listing the character's animations folder:
    `assets/sprites/<character_name>/animations/`
    → Do NOT rely on any hardcoded animation list. Always read the actual folder. New animations may have been added.
-3. **Read** `content/_template/story.json` as the base
+3. **Read** `content/_template/story.yaml` (or `story.json`) as the base
 4. **Copy** the template structure — do not start from scratch
 5. **Fill in** all fields based on the idea and rules below, picking animations from what actually exists in step 2
-6. **Output** the completed `story.json`
+6. **Output** the completed `story.yaml` / `story.json`
 
-The user saves it to `content/<category>/<name>/story.json` and renders with:
+The user saves it to `content/<category>/<name>/story.yaml` (or `story.json`) and renders with:
 ```bash
 .venv/Scripts/python video_generator.py --story content/<category>/<name>
 ```
 
-Asset paths in story.json must use `../../../assets/` (three levels up from the story folder).
+Asset paths in story files must use `../../../assets/` (three levels up from the story folder).
 
 ---
 
 ## Characters
 
-Characters live in `assets/sprites/<character_name>/`. More characters will be added over time.
-
-### Active Characters
-
-| Folder | Name | Personality | Voice Ref |
-|--------|------|-------------|-----------|
-| `dimsum_cat` | DIMsum Cat | cute kawaii cat girl, she/her, expressive, slightly dramatic | *(English voice model TBD)* |
-| `taeho` | Tae-ho | elegant tiger king, always wealthy/high-status roles (royalty, CEO, first class), calm and composed but loses composure around good food | *(no voice — reactions only)* |
-
-> When a new character is added, update this table. Each character has its own animations folder and voice reference audio.
+Characters are modular folders in `assets/sprites/<character_name>/`. **There is no single fixed main character** — always inspect `assets/sprites/` to see all available characters (e.g. `dimsum_cat`, `taeho`, `bear_boy`, `bear_girl`, `bear_couple`, `capybara`, `duckling`, etc.) and set `"character": "<folder_name>"` at the root level or per beat.
 
 ### Multi-Character Support
-Per beat, set `"character": "<folder_name>"` to switch the active character:
+Per beat, set `"character": "<folder_name>"` to switch the active character, or use `actors: [...]` to stage multiple characters on screen together:
 ```json
-{ "animation": "first_bite", "character": "taeho", ... }
+{ "animation": "happy_bounce", "character": "capybara", ... }
 ```
-Default character is `dimsum_cat` unless overridden at the root level with `"character": "taeho"`.
 
 ### Universal Character & Language Rules
 - Visual `text` is always **English** (prominent, punchy, expressive English dialogue or caption).
@@ -139,11 +130,11 @@ Background color (`bg`) should always **match the mood of the video** — not lo
 - End on a strong beat
 - Silent dramatic pause: `"text": "...."` with `side_eye` or `sulking`
 
-### Voice & Tone — Talk Like a Bestie
-DIMsum Cat speaks to viewers like a close best friend — casual, warm, direct:
+### Voice & Tone — Expressive & Relatable
+Keep dialogue casual, punchy, and direct to the viewer:
 - Conversational, punchy English ("Wait, seriously?", "No way...", "Hold on—")
 - Reactions feel genuine and expressive, not scripted
-- Energy matches a bestie telling a story, not a presenter giving a speech
+- Energy matches a fun animated short, not a formal presentation
 
 ### Scale & Position
 - Big moment: `scale 1.2–1.4`, `text_size: "huge"`
@@ -188,7 +179,24 @@ Suggested animation mood: shock, panic, escalating reaction, punchline — check
 
 ---
 
-### 3. Comedy / Interactive
+### 3. Dance / Rhythm
+Characters dancing, grooving, or performing a cute rhythm loop synced to music.
+
+```
+bg: match mood (see Background Color Rules)
+tts: false
+bg_music: upbeat or viral track
+description: caption + master # + #dance #cute #animation
+```
+
+Beat rules:
+- Sync beat timestamps and `camera: "zoom_punch"` to the music beat/drop
+- Combine `motion` (`squash_bounce`, `sway_tilt`, `anticipate_hop`) with `vfx` (`music_notes`, `sparkles`, `floating_hearts`)
+- Optional short English hype captions in `text`
+
+---
+
+### 4. Comedy / Interactive
 Fast-paced slapstick, rhythm, or interactive mini-game videos.
 
 ```
