@@ -19,8 +19,8 @@ import numpy as np
 from PIL import Image, ImageDraw
 
 ROOT          = Path(__file__).resolve().parent.parent
-BG_DESIGN_DIR = ROOT / "assets" / "background" / "design"
-BG_OUT_DIR    = ROOT / "assets" / "background"
+BG_DESIGN_DIR = ROOT / "assets" / "backgrounds" / "design"
+BG_OUT_DIR    = ROOT / "assets" / "backgrounds"
 MODEL_PATH    = ROOT / "assets" / "sprites" / "dimsum_cat" / ".esrgan_weights" / "RealESRGAN_x4plus_anime_6B.pth"
 
 TARGET_W, TARGET_H = 720, 1280  # 9:16
