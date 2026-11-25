@@ -247,6 +247,8 @@ def load_story_file(path: Path, args: argparse.Namespace) -> RenderConfig:
         gpt_sovits_prompt_text = data.get("gpt_sovits_prompt_text", ""),
         tts_pitch_normalize    = bool(data.get("tts_pitch_normalize", False)),
         tts_pitch_target       = float(data.get("tts_pitch_target", 0.0)),
+        tts_lang               = str(data.get("tts_lang", "auto")),
+        tts_prompt_lang        = str(data.get("tts_prompt_lang", "ko")),
         bg_music          = _resolve_story_path(data.get("bg_music", args.bg_music), story_dir),
         bg_music_start    = data.get("bg_music_start", ""),
         bg_volume         = float(data.get("bg_volume",  0.09)),
@@ -539,6 +541,8 @@ def render(config: RenderConfig, tts_only: bool = False, audio_only: bool = Fals
             gpt_sovits_top_p=config.gpt_sovits_top_p,
             gpt_sovits_rep_penalty=config.gpt_sovits_rep_penalty,
             gpt_sovits_prompt_text=config.gpt_sovits_prompt_text,
+            tts_lang=config.tts_lang,
+            tts_prompt_lang=config.tts_prompt_lang,
             pitch_normalize=config.tts_pitch_normalize,
             pitch_target=config.tts_pitch_target,
         )

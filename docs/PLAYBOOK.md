@@ -54,8 +54,9 @@ Default character is `dimsum_cat` unless overridden at the root level with `"cha
 - Visual `text` is always **English** (prominent, punchy, expressive English dialogue or caption).
 - `sub` is **strictly optional**: Only use when there is a genuine secondary whisper, internal monologue, or stage direction (e.g. `*(internal panic)*` or `(whispering)`). **Do NOT add `sub` to every beat** — double subtitles cause viewer fatigue. If the main line is clear, omit `sub` completely!
 - **NO Korean Hangul visually on screen** in `text`, `sub`, or `rich_text`.
-- **TTS Korean voiceover (when `tts: true`)**: Put Korean hangul text into `tts_text` per beat. GPT-SoVITS will speak the Korean line from `tts_text`, while the screen stays 100% English.
-  - If `tts_text` is omitted, TTS falls back to `text`.
+- **TTS voiceover (switching to English)**:
+  - Currently `tts: false` by default while the English GPT-SoVITS voice model is still in progress.
+  - When `tts: true`, put English spoken lines in `tts_text` (or omit `tts_text` to fall back to `text`). `tts_lang` defaults to `"auto"` (auto-detects `"en"` vs `"ko"`).
 - **Never use emoji in `text`** (fonts don't support color emoji glyphs). Emoji is OK in `description` and `pinned_comment`.
 
 ### Animations — ALWAYS Check the Folder
@@ -134,16 +135,13 @@ Background color (`bg`) should always **match the mood of the video** — not lo
 ### Beat Writing Rules
 - `text`: short, punchy English — **max ~15–20 chars per line** for readability
 - `sub`: strictly optional English secondary line (internal monologue, whisper, or stage direction) — omit when `text` is already clear
-- `tts_text`: Korean Hangul spoken by GPT-SoVITS when `tts: true` (never rendered on screen)
+- `tts_text`: optional spoken override when `tts: true` (English going forward; falls back to `text` if omitted)
 - Arc: setup → escalation → reaction → resolution/punchline
 - End on a strong beat
 - Silent dramatic pause: `"text": "...."` with `side_eye` or `sulking`
 
-### TTS Minimum Length Rule
-- Each `tts_text` beat (when spoken) must have **at least 7 Korean syllables** (characters in 가–힣)
-- Beats shorter than 7 syllables cause GPT-SoVITS to generate wobbly/unstable pitch ("melengkung")
-- If a beat feels too short, **expand or rephrase** `tts_text` — add context, reaction, or a trailing question
-- Example: ~~`"안녕! 나야 나!"`~~ → `"야야, 나야 나! 기다렸지?"`
+### TTS Minimum Length Rule (Legacy Korean Model Only)
+- Applies only if using the legacy Korean GPT-SoVITS model: each Korean `tts_text` beat needs **at least 7 Korean syllables** (가–힣) to avoid pitch wobble. Not needed for English or when `tts: false`.
 
 ### Voice & Tone — Talk Like a Bestie
 DIMsum Cat speaks to viewers like a close best friend — casual, warm, direct:
@@ -286,7 +284,8 @@ Save as `content/<name>/story.json`:
   "animation": "normal_talk",
   "bg": "#f5f0ec",
 
-  "tts": true,
+  "tts": false,
+  "tts_lang": "en",
   "gpt_sovits_ref": "../../assets/audio_reference/dimsum_cat_korean.mp3",
   "gpt_sovits_server": "http://127.0.0.1:9880",
   "gpt_sovits_speed": 0.88,
@@ -297,7 +296,6 @@ Save as `content/<name>/story.json`:
     {
       "time": 0.0,
       "text": "English text",
-      "tts_text": "한국어 대사 여기",
       "animation": "normal_talk",
       "pos": "center",
       "scale": 1.0,
@@ -312,10 +310,9 @@ Save as `content/<name>/story.json`:
 ## Pre-Render Checklist
 
 - [ ] All `text` (and optional `sub`) fields are English — no Hangul on screen
-- [ ] All `tts_text` fields are Korean hangul (when `tts: true`, ≥ 7 syllables)
+- [ ] `tts` is `false` (until English GPT-SoVITS model is ready), or `tts_lang` is set appropriately
 - [ ] No emoji in `text`
 - [ ] Description has master # + category #
-- [ ] `gpt_sovits_ref` path exists
 - [ ] `bg_music` path exists
-- [ ] GPT-SoVITS server is running at port 9880
+- [ ] If `tts: true`: `gpt_sovits_ref` path exists and GPT-SoVITS server is running at port 9880
 - [ ] Story folder created at `content/<category>/<name>/`

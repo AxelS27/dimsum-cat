@@ -268,6 +268,8 @@ class RenderConfig:
     gpt_sovits_prompt_text: str = ""   # transcript of the reference audio — anchors voice/prosody. Empty = degraded ref-free mode.
     tts_pitch_normalize: bool  = False   # shift each clip to a common pitch register (fixes per-beat pitch drift)
     tts_pitch_target:    float = 0.0     # target F0 in Hz (0 = auto: median of clips)
+    tts_lang:            str   = "auto"  # "auto" (detect Hangul->ko else en), "en", or "ko"
+    tts_prompt_lang:     str   = "ko"    # language of gpt_sovits_ref audio ("ko" or "en")
     bg_music:           str  = ""
     bg_music_start:     str  = ""   # "SS:cs" — seconds:centiseconds, e.g. "12:50" = 12.50s
     bg_music_fade_in:   float = 0.0

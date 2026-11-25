@@ -96,6 +96,14 @@ def _pitch_shift_file(ffmpeg: str, path: Path, semitones: float) -> None:
         tmp_mp3.replace(path)
 
 
+def _resolve_tts_lang(text: str, lang: str = "auto") -> str:
+    """Resolve GPT-SoVITS text_lang ('ko' or 'en'). 'auto' picks 'ko' if Hangul is present, else 'en'."""
+    norm = (lang or "auto").strip().lower()
+    if norm in ("ko", "en"):
+        return norm
+    return "ko" if any("가" <= c <= "힣" for c in text) else "en"
+
+
 def _gpt_sovits_clip(
     text: str,
     ref_audio: str,
@@ -107,6 +115,8 @@ def _gpt_sovits_clip(
     top_p: float | None = None,
     rep_penalty_override: float | None = None,
     prompt_text: str = "",
+    text_lang: str = "auto",
+    prompt_lang: str = "ko",
 ) -> None:
     """Generate one clip via local GPT-SoVITS API server."""
     import requests  # type: ignore[import]
@@ -116,11 +126,12 @@ def _gpt_sovits_clip(
         rep_penalty = rep_penalty_override
     else:
         rep_penalty = 1.05 if _has_repetition(text) else auto_rep
+    resolved_lang = _resolve_tts_lang(text, text_lang)
     resp = requests.post(f"{server}/tts", json={
         "text": text,
-        "text_lang": "ko",
+        "text_lang": resolved_lang,
         "ref_audio_path": ref_audio,
-        "prompt_lang": "ko",
+        "prompt_lang": prompt_lang or "ko",
         "prompt_text": prompt_text,
         "speed_factor":       speed       if speed       is not None else auto_speed,
         "temperature":        temperature if temperature is not None else auto_temp,
@@ -152,6 +163,8 @@ def build_tts_audio(
     gpt_sovits_prompt_text: str = "",
     pitch_normalize: bool = False,
     pitch_target: float = 0.0,
+    tts_lang: str = "auto",
+    tts_prompt_lang: str = "ko",
 ) -> bool | dict:
     """Generate a timed audio track from beat texts using ffmpeg filter_complex.
 
@@ -195,7 +208,9 @@ def build_tts_audio(
                                  top_k=gpt_sovits_top_k,
                                  top_p=gpt_sovits_top_p,
                                  rep_penalty_override=gpt_sovits_rep_penalty,
-                                 prompt_text=gpt_sovits_prompt_text)
+                                 prompt_text=gpt_sovits_prompt_text,
+                                 text_lang=tts_lang,
+                                 prompt_lang=tts_prompt_lang)
         except Exception as e:
             print(f"  TTS (GPT-SoVITS) failed: {e}")
             shutil.rmtree(tmp_dir, ignore_errors=True)

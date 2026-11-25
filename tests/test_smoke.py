@@ -4,9 +4,12 @@ from __future__ import annotations
 import unittest
 from pathlib import Path
 
+from src.camera import compute_camera
 from src.models import ActorConfig, StoryBeat
 from src.renderer import iter_video_frames
 from src.story import build_parser, load_story_file
+from src.tts import _detect_emotion, _resolve_tts_lang, _should_speak
+from src.vfx import render_vfx_layer
 
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -43,6 +46,31 @@ class EngineSmokeTests(unittest.TestCase):
         self.assertEqual(len(frames), 2)
         for frame in frames:
             self.assertEqual(frame.size, (360, 640))
+
+    def test_tts_lang_resolution_and_emotion(self) -> None:
+        self.assertEqual(_resolve_tts_lang("Hello bestie!", "auto"), "en")
+        self.assertEqual(_resolve_tts_lang("안녕 친구야", "auto"), "ko")
+        self.assertEqual(_resolve_tts_lang("Hello!", "ko"), "ko")
+        self.assertEqual(_resolve_tts_lang("안녕", "en"), "en")
+        self.assertFalse(_should_speak("...."))
+        self.assertTrue(_should_speak("Wait what?!"))
+        speed, temp, _ = _detect_emotion("No way!!")
+        self.assertGreater(temp, 1.4)
+        self.assertGreater(speed, 0.9)
+
+    def test_camera_and_vfx_smoke(self) -> None:
+        cam = compute_camera({"type": "zoom_punch", "zoom": 1.25}, age=0.5, beat_dur=2.0)
+        self.assertGreaterEqual(cam.zoom, 1.0)
+
+        vfx_img = render_vfx_layer(
+            canvas_size=(360, 640),
+            vfx_specs=[{"type": "floating_hearts", "intensity": 1.0}],
+            t=0.5,
+            age=0.5,
+            anchor_positions=[(180.0, 320.0)],
+        )
+        self.assertEqual(vfx_img.size, (360, 640))
+        self.assertEqual(vfx_img.mode, "RGBA")
 
 
 if __name__ == "__main__":
