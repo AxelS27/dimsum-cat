@@ -287,6 +287,18 @@ class EngineSmokeTests(unittest.TestCase):
             self.assertTrue(any("unknown key 'anim'" in e for e in errs))
             self.assertTrue(any("unsupported font glyph" in e for e in errs))
 
+    def test_motion_defaults_are_calm_and_props_still(self) -> None:
+        from src.motion import compute_motion, resolve_motion_name
+        self.assertEqual(resolve_motion_name("normal_talk", "dimsum_cat"), "breathe")
+        self.assertEqual(resolve_motion_name("plate_full", "bear_props"), "none")
+        self.assertEqual(resolve_motion_name("knockout", "bear_boy"), "none")
+        ms_still = compute_motion("none", t=1.0, age=1.0, w_scale=1.0)
+        self.assertEqual(ms_still.bob_px, 0.0)
+        self.assertEqual(ms_still.rot_deg, 0.0)
+        ms_breathe = compute_motion("breathe", t=1.0, age=1.0, w_scale=1.0)
+        self.assertEqual(ms_breathe.rot_deg, 0.0)
+        self.assertLessEqual(abs(ms_breathe.bob_px), 2.0)
+
     def test_video_encoder_args_returns_valid_codec(self) -> None:
         from src.utils import find_ffmpeg
         ffmpeg = find_ffmpeg() or "ffmpeg"

@@ -39,6 +39,26 @@ def organic(t: float, freq: float = 1.0, phase: float = 0.0) -> float:
 # Motion Behavior Algorithms
 # ---------------------------------------------------------------------------
 
+def motion_none(t: float, age: float, w_scale: float, speed: float = 1.0, intensity: float = 1.0) -> MotionState:
+    """Completely stationary — zero bob, zero tilt, zero squash."""
+    return MotionState()
+
+
+def motion_breathe(t: float, age: float, w_scale: float, speed: float = 1.0, intensity: float = 1.0) -> MotionState:
+    """Subtle, calm idle breathing without dizzying bounce or head-tilt."""
+    s = speed
+    i = intensity
+    cycle = math.sin(t * 2.2 * s)
+    return MotionState(
+        bob_px=cycle * 1.5 * i * w_scale,
+        drift_x=0.0,
+        rot_deg=0.0,
+        sq_x=1.0,
+        sq_y=1.0,
+        scale_mult=1.0 + cycle * 0.012 * i,
+    )
+
+
 def motion_float_gentle(t: float, age: float, w_scale: float, speed: float = 1.0, intensity: float = 1.0) -> MotionState:
     """Calm, buoyant water/swamp float with gentle horizontal drift."""
     s = speed
@@ -359,13 +379,18 @@ def eval_actor_trajectory(
 MotionFunc = Callable[[float, float, float, float, float], MotionState]
 
 MOTION_REGISTRY: dict[str, MotionFunc] = {
+    "none": motion_none,
+    "static": motion_none,
+    "still": motion_none,
+    "breathe": motion_breathe,
+    "idle": motion_breathe,
     "float_gentle": motion_float_gentle,
     "heavy_bounce": motion_heavy_bounce,
     "belly_laugh": motion_heavy_bounce,
     "snappy_hops": motion_snappy_hops,
     "swim_pulse": motion_swim_pulse,
     "organic_groove": motion_organic_groove,
-    "default": motion_organic_groove,
+    "default": motion_breathe,
     "panic_jitter": motion_panic_jitter,
     "proud_strut": motion_proud_strut,
     "sleepy_drift": motion_sleepy_drift,
@@ -385,16 +410,27 @@ ANIMATION_MOTION_MAP: dict[str, str] = {
     "crocodile": "heavy_bounce",
     "ladybug": "snappy_hops",
     "jellyfish": "swim_pulse",
-    # Emotive Dimsum Cat animations
+    # Emotive animations
     "panic": "panic_jitter",
     "sick_fever": "panic_jitter",
     "laughing_hard": "heavy_bounce",
     "sleepy_yawn": "sleepy_drift",
     "determined": "proud_strut",
+    # Stationary poses & props
+    "knockout": "none",
+    "table": "none",
+    "plate_empty": "none",
+    "plate_full": "none",
+    "plate_half": "none",
+    "chalkboard": "none",
+    "box_closed": "none",
+    "box_prop": "none",
 }
 
 CHARACTER_MOTION_MAP: dict[str, str] = {
     "taeho": "proud_strut",
+    "bear_props": "none",
+    "props": "none",
 }
 
 
@@ -404,7 +440,7 @@ def resolve_motion_name(anim_name: str = "", character: str = "") -> str:
         return ANIMATION_MOTION_MAP[anim_name]
     if character in CHARACTER_MOTION_MAP:
         return CHARACTER_MOTION_MAP[character]
-    return "organic_groove"
+    return "breathe"
 
 
 def compute_motion(
@@ -416,5 +452,5 @@ def compute_motion(
     intensity: float = 1.0,
 ) -> MotionState:
     """Compute procedural physics state for given motion preset."""
-    func = MOTION_REGISTRY.get(motion_name, motion_organic_groove)
+    func = MOTION_REGISTRY.get(motion_name, motion_breathe)
     return func(t, age, w_scale, speed, intensity)
