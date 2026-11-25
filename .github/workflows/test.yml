@@ -15,6 +15,6 @@ jobs:
         with:
           python-version: "3.12"
       - name: Install lightweight dependencies
-        run: pip install pillow python-dotenv pyyaml numpy
+        run: pip install pillow python-dotenv pyyaml numpy fonttools
       - name: Run unit & smoke tests
         run: python -m unittest discover -s tests -v

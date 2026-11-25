@@ -417,7 +417,12 @@ def _render_accessory(
     attach_target = (getattr(acc, "attach_to", "") or "").strip()
     if attach_target and actor_anchors:
         match = next(
-            (a for a in actor_anchors if a.get("character") == attach_target or str(a.get("index")) == attach_target),
+            (
+                a for a in actor_anchors
+                if a.get("id") == attach_target
+                or a.get("character") == attach_target
+                or str(a.get("index")) == attach_target
+            ),
             None,
         )
         if match is None:
@@ -475,22 +480,26 @@ def iter_video_frames(
     w_scale = config.width / 720
 
     # Pre-load all animations referenced in beats/actors, keyed by (character, animation)
-    anim_keys: set[tuple[str, str]] = {(config.default_character, config.default_animation)}
+    anim_keys: set[tuple[str, str]] = set()
     for b in config.beats:
         for a in b.get_actors(config.default_character, config.default_animation):
             ch = a.character or config.default_character
             anim = a.animation or config.default_animation
-            if anim:
+            if ch and anim:
                 anim_keys.add((ch, anim))
+    if not anim_keys and config.default_character and config.default_animation:
+        anim_keys.add((config.default_character, config.default_animation))
 
     anim_cache: dict[tuple[str, str], tuple[list[Image.Image], tuple[int, int]]] = {}
     for ch, name in anim_keys:
         try:
             anim_cache[(ch, name)] = load_frames(name, character=ch)
-        except Exception as e:
+        except Exception:
             if (config.default_character, config.default_animation) in anim_cache:
                 anim_cache[(ch, name)] = anim_cache[(config.default_character, config.default_animation)]
-            else:
+            elif anim_cache:
+                anim_cache[(ch, name)] = next(iter(anim_cache.values()))
+            elif config.default_character and config.default_animation:
                 anim_cache[(ch, name)] = load_frames(config.default_animation, character=config.default_character)
 
     # Sort and ensure a beat at t=0
@@ -563,29 +572,35 @@ def iter_video_frames(
                 prev_b = beats[last_beat_idx]
                 prev_bg = prev_b.bg_image or config.bg_image
                 curr_bg = beat.bg_image or config.bg_image
+                prev_bg_hex = prev_b.bg or config.bg
+                curr_bg_hex = beat.bg or config.bg
 
                 # Hard cut if background changed or hard transition used
                 is_scene_cut = (
                     prev_bg != curr_bg
+                    or prev_bg_hex != curr_bg_hex
                     or beat.transition in ("dip_black", "fade_black", "circle_wipe", "iris", "cut")
                     or getattr(beat.get_camera_config(), "type", "") == "cut"
                 )
                 beat_cam_start = None if is_scene_cut else last_cam_state
                 prev_actors = prev_b.get_actors(config.default_character, config.default_animation)
-                prev_chars = {a.character or config.default_character for a in prev_actors} if not is_scene_cut else set()
+                prev_chars = {(a.id or a.character or config.default_character) for a in prev_actors} if not is_scene_cut else set()
             elif beat_idx > 0 and last_beat_idx < 0:
                 # Started mid-stream (chunk or preview)
                 prev_b = beats[beat_idx - 1]
                 prev_bg = prev_b.bg_image or config.bg_image
                 curr_bg = beat.bg_image or config.bg_image
+                prev_bg_hex = prev_b.bg or config.bg
+                curr_bg_hex = beat.bg or config.bg
                 is_scene_cut = (
                     prev_bg != curr_bg
+                    or prev_bg_hex != curr_bg_hex
                     or beat.transition in ("dip_black", "fade_black", "circle_wipe", "iris", "cut")
                     or getattr(beat.get_camera_config(), "type", "") == "cut"
                 )
                 beat_cam_start = None
                 prev_actors = prev_b.get_actors(config.default_character, config.default_animation)
-                prev_chars = {a.character or config.default_character for a in prev_actors} if not is_scene_cut else set()
+                prev_chars = {(a.id or a.character or config.default_character) for a in prev_actors} if not is_scene_cut else set()
             else:
                 beat_cam_start = None
                 prev_chars = set()
@@ -608,15 +623,18 @@ def iter_video_frames(
         actor_trajectories: dict[int, TrajectoryState] = {}
         for a_idx, a in enumerate(sorted_actors):
             ch = a.character or config.default_character
+            aid = a.id or ch
             an = a.animation or config.default_animation
             traj = eval_actor_trajectory(a, age=age, beat_dur=beat_dur)
             actor_trajectories[a_idx] = traj
-            actor_positions[ch] = (traj.cx, traj.cy)
+            actor_positions[aid] = (traj.cx, traj.cy)
+            actor_positions.setdefault(ch, (traj.cx, traj.cy))
             mp = a.motion
             if not mp:
                 mp = "walk" if traj.is_moving else resolve_motion_name(an, ch)
             ms = compute_motion(mp, t=t, age=age, w_scale=w_scale, speed=a.motion_speed, intensity=a.motion_intensity)
-            actor_motions[ch] = (ms.drift_x, ms.bob_px)
+            actor_motions[aid] = (ms.drift_x, ms.bob_px)
+            actor_motions.setdefault(ch, (ms.drift_x, ms.bob_px))
 
         # ----------------------------------------------------------------
         # Virtual Cinematic Director Camera
@@ -643,8 +661,9 @@ def iter_video_frames(
         # Compose Background with Virtual Camera
         # ----------------------------------------------------------------
         active_bg_image = beat.bg_image or config.bg_image
+        active_bg_hex = beat.bg or config.bg
         canvas = make_background(
-            (config.width, config.height), config.bg,
+            (config.width, config.height), active_bg_hex,
             bg_image=active_bg_image, story_dir=config.story_dir,
             zoom=cam.zoom, center_x=cam.center_x, center_y=cam.center_y,
             shake_x=cam.shake_x, shake_y=cam.shake_y,
@@ -701,7 +720,8 @@ def iter_video_frames(
             extra_rotate = lerp(actor.rotate, actor.rotate_to, kf_t) if actor.rotate_to is not None else actor.rotate
 
             # Entrance bounce/pop only triggers for brand new appearances on stage
-            is_new_actor = (act_char not in prev_chars) or (actor.delay > 0.0)
+            act_key = actor.id or act_char
+            is_new_actor = (act_key not in prev_chars) or (actor.delay > 0.0)
             if is_new_actor and actor_age < ENTRANCE_DUR:
                 prog = actor_age / ENTRANCE_DUR
                 spring = ease_out_back(prog)
@@ -820,6 +840,7 @@ def iter_video_frames(
 
             actor_anchors.append({
                 "index": a_idx,
+                "id": actor.id or act_char,
                 "character": act_char,
                 "pos": (config.width * screen_cx, config.height * screen_cy),
                 "head_pos": (char_head_x, char_head_y),
@@ -844,7 +865,7 @@ def iter_video_frames(
             for v in a_dict.get("vfx", []):
                 v_copy = dict(v)
                 if "target" not in v_copy:
-                    v_copy["target"] = a_dict["character"] or a_dict["index"]
+                    v_copy["target"] = a_dict.get("id") or a_dict["character"] or a_dict["index"]
                 all_vfx.append(v_copy)
         for v in beat.vfx:
             if isinstance(v, str):

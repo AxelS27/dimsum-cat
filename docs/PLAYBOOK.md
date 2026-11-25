@@ -23,7 +23,25 @@ The user saves it to `content/<category>/<name>/story.yaml` (or `story.json`) an
 .venv/Scripts/python video_generator.py --story content/<category>/<name>
 ```
 
-Asset paths in story files must use `../../../assets/` (three levels up from the story folder).
+Asset paths in story files should use portable root-relative paths like `assets/music/pretty_please.mp3` (legacy `../../../assets/` paths are also supported).
+
+### Modular Multi-Actor Story Format (Recommended)
+- Root `character` and `default_animation` are optional.
+- Define reusable actors once in `cast:` (with unique IDs), optional global `defaults:`, and reference them concisely in `beats:` (or `scenes:`):
+  ```yaml
+  cast:
+    capy_1: { character: capybara, pos: [0.34, 0.58], scale: 1.05 }
+    duck:   { character: duckling, pos: [0.68, 0.60], scale: 0.95 }
+  defaults:
+    text_size: big
+  beats:
+    - dur: 2.0
+      text: "Wait for it..."
+      actors:
+        capy_1: { animation: dance }
+        duck:   { animation: giggle }
+  ```
+- Beats can use `time:` (seconds), `beat:` (with root `bpm`), or `dur:` (sequential duration). If `duration` is omitted at root, it is calculated automatically from `dur`.
 
 ---
 

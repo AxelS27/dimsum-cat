@@ -223,6 +223,70 @@ class EngineSmokeTests(unittest.TestCase):
             sb_path = render_storyboard(pcfg, Path(tmp) / "storyboard.png")
             self.assertTrue(sb_path.exists())
 
+    def test_modular_cast_scenes_dur_and_validation(self) -> None:
+        import json, tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            p = Path(tmp) / "story.json"
+            p.write_text(
+                json.dumps({
+                    "title": "Modular AX Test",
+                    "width": 360,
+                    "height": 640,
+                    "fps": 10,
+                    "cast": {
+                        "capy_1": {"character": "capybara", "pos": [0.3, 0.58], "scale": 1.0},
+                        "capy_2": {"character": "capybara", "pos": [0.7, 0.58], "scale": 0.9},
+                    },
+                    "defaults": {"text_size": "big"},
+                    "scenes": [
+                        {
+                            "bg": "#f0fdf5",
+                            "beats": [
+                                {
+                                    "dur": 0.3,
+                                    "text": "Scene 1!",
+                                    "camera": {"type": "crash_zoom", "target": "capy_2"},
+                                    "actors": {"capy_1": "dance", "capy_2": {"animation": "death_stare"}},
+                                }
+                            ],
+                        },
+                        {
+                            "bg": "#fdf0f5",
+                            "beats": [
+                                {
+                                    "dur": 0.3,
+                                    "text": "Scene 2!",
+                                    "actors": {"capy_1": "smug_win"},
+                                }
+                            ],
+                        },
+                    ],
+                }),
+                encoding="utf-8",
+            )
+            cfg = load_story_file(p, build_parser().parse_args([]))
+            self.assertAlmostEqual(cfg.duration, 0.6)
+            self.assertAlmostEqual(cfg.beats[1].time, 0.3)
+            self.assertEqual(cfg.beats[0].text_size, "big")
+            self.assertEqual(cfg.beats[0].actors[0].id, "capy_1")
+            self.assertEqual(cfg.beats[0].actors[0].animation, "dance")
+            self.assertEqual(validate_story(cfg), [])
+            frames = list(iter_video_frames(cfg))
+            self.assertEqual(len(frames), 6)
+
+            # Unknown key + unsupported glyph detection
+            p.write_text(
+                json.dumps({
+                    "title": "Bad Key Test",
+                    "beats": [{"dur": 1.0, "text": "Wait\u2014", "anim": "dance", "character": "capybara"}],
+                }),
+                encoding="utf-8",
+            )
+            bad_cfg = load_story_file(p, build_parser().parse_args([]))
+            errs = validate_story(bad_cfg)
+            self.assertTrue(any("unknown key 'anim'" in e for e in errs))
+            self.assertTrue(any("unsupported font glyph" in e for e in errs))
+
     def test_video_encoder_args_returns_valid_codec(self) -> None:
         from src.utils import find_ffmpeg
         ffmpeg = find_ffmpeg() or "ffmpeg"

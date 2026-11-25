@@ -324,8 +324,10 @@ def _normalize_anchor_data(
             head_pos = item.get("head_pos", (pos[0], pos[1] - 110.0 * w_scale))
             flip_x = bool(item.get("flip_x", False))
             char_name = str(item.get("character", "")).lower().strip()
+            actor_id = str(item.get("id", "")).lower().strip() or char_name
             normalized.append({
                 "index": item.get("index", idx),
+                "id": actor_id,
                 "character": char_name,
                 "pos": pos,
                 "head_pos": head_pos,
@@ -421,7 +423,11 @@ def _resolve_spec_targets(
         else:
             matched = []
             for act in actors:
-                if raw_target == str(act["index"]) or (act["character"] and raw_target in act["character"]):
+                if (
+                    raw_target == str(act["index"])
+                    or (act.get("id") and raw_target == act["id"])
+                    or (act["character"] and raw_target in act["character"])
+                ):
                     matched.append(act)
         if matched:
             results = []

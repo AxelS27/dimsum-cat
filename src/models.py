@@ -68,7 +68,8 @@ class RichTextSpan:
 @dataclass
 class ActorConfig:
     """Configuration for an individual character actor on stage."""
-    character: str = ""                     # character folder (e.g. "dimsum_cat", "taeho", "animals")
+    id: str = ""                            # unique actor alias (e.g. from cast, falls back to character)
+    character: str = ""                     # character folder (e.g. "dimsum_cat", "capybara")
     animation: str = ""                     # animation folder inside character
     pos: str | list | tuple = "center"      # anchor position: [cx, cy] or preset string
     scale: float = 1.0                      # scale factor
@@ -176,6 +177,8 @@ class StoryBeat:
     fade_in: float = 0.0                                     # single-actor fade-in duration (s)
     fade_out: float = 0.0                                    # single-actor fade-out duration (s)
     delay: float = 0.0                                       # single-actor sub-beat entrance delay (s)
+    dur: float | None = None                                 # optional sequential beat duration (s)
+    bg: str = ""                                             # optional per-beat / per-scene background hex color
 
     def get_camera_config(self) -> CameraConfig:
         """Resolve camera settings into a strongly-typed CameraConfig."""
@@ -210,6 +213,7 @@ class StoryBeat:
             res: list[ActorConfig] = []
             for a in self.actors:
                 res.append(ActorConfig(
+                    id               = a.id or a.character or self.character or default_character,
                     character        = a.character or self.character or default_character,
                     animation        = a.animation or self.animation or default_animation,
                     pos              = a.pos,
@@ -240,6 +244,7 @@ class StoryBeat:
             return res
         return [
             ActorConfig(
+                id               = self.character or default_character,
                 character        = self.character or default_character,
                 animation        = self.animation or default_animation,
                 pos              = self.pos,
@@ -313,4 +318,5 @@ class RenderConfig:
     bpm:                float | None = None  # optional music tempo (beats per minute)
     beat_offset:        float = 0.0   # seconds before musical beat 0
     auto_beat_zoom:     float = 0.0   # subtle camera zoom pulse on every musical beat (e.g. 0.05)
+    validation_warnings: list[str] = field(default_factory=list)  # schema/unknown-key warnings from story load
     silent_beat_dur:    float = 1.5   # retimed duration for silent/punctuation beats

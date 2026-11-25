@@ -140,42 +140,126 @@ def _load_rich_text(raw: object) -> list[RichTextSpan]:
     return spans
 
 
-def _load_actors(raw: object) -> list[ActorConfig]:
-    if not isinstance(raw, list):
+_VALID_ROOT_KEYS = {
+    "animation", "auto_beat_zoom", "beat_offset", "beats", "between_gap", "bg",
+    "bg_image", "bg_music", "bg_music_fade_in", "bg_music_start", "bg_volume",
+    "bpm", "cast", "character", "default_animation", "default_beat_dur", "defaults",
+    "description", "duration", "edge_voice", "fps", "gpt_sovits_prompt_text",
+    "gpt_sovits_ref", "gpt_sovits_rep_penalty", "gpt_sovits_server",
+    "gpt_sovits_speed", "gpt_sovits_temperature", "gpt_sovits_top_k",
+    "gpt_sovits_top_p", "height", "intro_gap", "output", "pinned_comment",
+    "scenes", "silent_beat_dur", "title", "tts", "tts_engine", "tts_lang",
+    "tts_pitch", "tts_pitch_normalize", "tts_pitch_target", "tts_prompt_lang",
+    "tts_provider", "tts_volume", "watermark", "width",
+}
+
+_VALID_BEAT_KEYS = {
+    "accessories", "actors", "after_gap", "animation", "auto_flip", "auto_tilt",
+    "beat", "bg", "bg_image", "camera", "camera_intensity", "cat_rotate",
+    "character", "delay", "dur", "fade_in", "fade_out", "flip_x", "ground_shadow",
+    "loop_path", "motion", "motion_intensity", "motion_speed", "move_dur",
+    "move_ease", "move_speed", "move_to", "opacity", "path", "pos", "pos_to",
+    "preset", "rich_text", "rich_text_sub", "rotate_to", "scale", "scale_to",
+    "sfx", "sub", "text", "text_anim", "text_size", "time", "transition",
+    "transition_dur", "tts_delay", "tts_speed", "tts_temperature", "tts_text",
+    "vfx", "waypoints",
+}
+
+_VALID_ACTOR_KEYS = {
+    "animation", "auto_flip", "auto_tilt", "character", "delay", "fade_in",
+    "fade_out", "flip_x", "ground_shadow", "id", "loop_path", "motion",
+    "motion_intensity", "motion_speed", "move_dur", "move_ease", "move_speed",
+    "move_to", "opacity", "path", "pos", "pos_to", "rotate", "rotate_to",
+    "scale", "scale_to", "vfx", "waypoints", "z_index",
+}
+
+
+def _first_char_animation(character: str) -> str:
+    """Return the first available animation folder name for character, or ''."""
+    if not character:
+        return ""
+    anims_dir = SPRITES_ROOT / character / "animations"
+    if not anims_dir.is_dir():
+        return ""
+    first = next((d.name for d in sorted(anims_dir.iterdir()) if d.is_dir()), "")
+    return first
+
+
+def _load_actors(
+    raw: object,
+    cast: dict[str, dict] | None = None,
+    warnings: list[str] | None = None,
+    beat_idx: int = -1,
+) -> list[ActorConfig]:
+    """Load actors from a list or dict shorthand, resolving cast templates by id."""
+    cast = cast or {}
+    items: list[dict] = []
+    if isinstance(raw, dict):
+        for actor_id, spec in raw.items():
+            if isinstance(spec, str):
+                items.append({"id": str(actor_id), "animation": spec})
+            elif isinstance(spec, dict):
+                merged = dict(spec)
+                merged.setdefault("id", str(actor_id))
+                items.append(merged)
+    elif isinstance(raw, list):
+        for a in raw:
+            if isinstance(a, dict):
+                items.append(a)
+    else:
         return []
+
+    import difflib
     actors: list[ActorConfig] = []
-    for a in raw:
-        if isinstance(a, dict):
-            actors.append(
-                ActorConfig(
-                    character        = str(a.get("character", "")),
-                    animation        = str(a.get("animation", "")),
-                    pos              = a.get("pos", "center"),
-                    scale            = float(a.get("scale", 1.0)),
-                    flip_x           = bool(a.get("flip_x", False)),
-                    rotate           = float(a.get("rotate", 0.0)),
-                    motion           = str(a.get("motion", "")),
-                    motion_speed     = float(a.get("motion_speed", 1.0)),
-                    motion_intensity = float(a.get("motion_intensity", 1.0)),
-                    ground_shadow    = bool(a.get("ground_shadow", True)),
-                    z_index          = int(a.get("z_index", 0)),
-                    move_to          = a.get("move_to") or a.get("pos_to"),
-                    path             = a.get("path") or a.get("waypoints"),
-                    move_speed       = float(a.get("move_speed", 1.0)),
-                    move_ease        = str(a.get("move_ease", "smooth")),
-                    move_dur         = float(a["move_dur"]) if "move_dur" in a else None,
-                    auto_tilt        = a.get("auto_tilt", True),
-                    auto_flip        = bool(a.get("auto_flip", True)),
-                    loop_path        = bool(a.get("loop_path", False)),
-                    scale_to         = float(a["scale_to"]) if a.get("scale_to") is not None else None,
-                    rotate_to        = float(a["rotate_to"]) if a.get("rotate_to") is not None else None,
-                    opacity          = float(a.get("opacity", 1.0)),
-                    fade_in          = float(a.get("fade_in", 0.0)),
-                    fade_out         = float(a.get("fade_out", 0.0)),
-                    delay            = float(a.get("delay", 0.0)),
-                    vfx              = _load_vfx(a.get("vfx")),
-                )
+    for raw_a in items:
+        aid = str(raw_a.get("id", "") or "").strip()
+        if aid and aid in cast and isinstance(cast[aid], dict):
+            a = dict(cast[aid])
+            a.update(raw_a)
+            a["id"] = aid
+        else:
+            a = dict(raw_a)
+            if aid and aid not in cast and not a.get("character") and warnings is not None:
+                warnings.append(f"Beat {beat_idx}: actor id '{aid}' not found in 'cast' and missing 'character'.")
+
+        if warnings is not None:
+            for k in a:
+                if k not in _VALID_ACTOR_KEYS:
+                    sug = difflib.get_close_matches(k, sorted(_VALID_ACTOR_KEYS), n=2)
+                    hint = f" Did you mean: {', '.join(sug)}?" if sug else ""
+                    warnings.append(f"Beat {beat_idx}: unknown actor key '{k}'.{hint}")
+
+        actors.append(
+            ActorConfig(
+                id               = aid,
+                character        = str(a.get("character", "")),
+                animation        = str(a.get("animation", "")),
+                pos              = a.get("pos", "center"),
+                scale            = float(a.get("scale", 1.0)),
+                flip_x           = bool(a.get("flip_x", False)),
+                rotate           = float(a.get("rotate", 0.0)),
+                motion           = str(a.get("motion", "")),
+                motion_speed     = float(a.get("motion_speed", 1.0)),
+                motion_intensity = float(a.get("motion_intensity", 1.0)),
+                ground_shadow    = bool(a.get("ground_shadow", True)),
+                z_index          = int(a.get("z_index", 0)),
+                move_to          = a.get("move_to") or a.get("pos_to"),
+                path             = a.get("path") or a.get("waypoints"),
+                move_speed       = float(a.get("move_speed", 1.0)),
+                move_ease        = str(a.get("move_ease", "smooth")),
+                move_dur         = float(a["move_dur"]) if a.get("move_dur") is not None else None,
+                auto_tilt        = a.get("auto_tilt", True),
+                auto_flip        = bool(a.get("auto_flip", True)),
+                loop_path        = bool(a.get("loop_path", False)),
+                scale_to         = float(a["scale_to"]) if a.get("scale_to") is not None else None,
+                rotate_to        = float(a["rotate_to"]) if a.get("rotate_to") is not None else None,
+                opacity          = float(a.get("opacity", 1.0)),
+                fade_in          = float(a.get("fade_in", 0.0)),
+                fade_out         = float(a.get("fade_out", 0.0)),
+                delay            = float(a.get("delay", 0.0)),
+                vfx              = _load_vfx(a.get("vfx")),
             )
+        )
     return actors
 
 
@@ -253,90 +337,168 @@ def load_story_file(path: Path, args: argparse.Namespace) -> RenderConfig:
         data = yaml.safe_load(raw_text) or {}
     else:
         data = json.loads(raw_text) or {}
-    def _apply_preset(b: dict) -> dict:
-        pname = str(b.get("preset", "") or "").strip()
-        if not pname or pname not in BEAT_PRESETS:
-            return b
-        merged = dict(BEAT_PRESETS[pname])
+
+    import difflib
+    validation_warnings: list[str] = []
+    for k in data:
+        if k not in _VALID_ROOT_KEYS:
+            sug = difflib.get_close_matches(k, sorted(_VALID_ROOT_KEYS), n=2)
+            hint = f" Did you mean: {', '.join(sug)}?" if sug else ""
+            validation_warnings.append(f"Root: unknown key '{k}'.{hint}")
+
+    root_cast: dict[str, dict] = data.get("cast") or {}
+    root_defaults: dict = data.get("defaults") or {}
+
+    # Flatten optional `scenes:` into beats with per-scene bg / bg_image / cast inheritance
+    raw_beat_items: list[tuple[dict, dict[str, dict]]] = []
+    if isinstance(data.get("scenes"), list) and data["scenes"]:
+        for sc in data["scenes"]:
+            if not isinstance(sc, dict):
+                continue
+            sc_cast = dict(root_cast)
+            if isinstance(sc.get("cast"), dict):
+                for cid, cval in sc["cast"].items():
+                    sc_cast[cid] = {**sc_cast.get(cid, {}), **cval} if isinstance(cval, dict) else cval
+            sc_beats = sc.get("beats") or []
+            for bi, sb in enumerate(sc_beats):
+                if not isinstance(sb, dict):
+                    continue
+                merged_b = dict(sb)
+                if sc.get("bg") and "bg" not in merged_b:
+                    merged_b["bg"] = sc["bg"]
+                if sc.get("bg_image") and "bg_image" not in merged_b:
+                    merged_b["bg_image"] = sc["bg_image"]
+                if bi == 0 and sc.get("transition") and "transition" not in merged_b:
+                    merged_b["transition"] = sc["transition"]
+                raw_beat_items.append((merged_b, sc_cast))
+    else:
+        for b in data.get("beats", []):
+            if isinstance(b, dict):
+                raw_beat_items.append((b, root_cast))
+
+    def _merge_beat(b: dict) -> dict:
+        merged = dict(root_defaults)
         merged.update(b)
+        pname = str(merged.get("preset", "") or "").strip()
+        if pname:
+            if pname in BEAT_PRESETS:
+                preset_merged = dict(root_defaults)
+                preset_merged.update(BEAT_PRESETS[pname])
+                preset_merged.update(b)
+                merged = preset_merged
+            else:
+                sug = difflib.get_close_matches(pname, sorted(BEAT_PRESETS.keys()), n=2)
+                hint = f" Did you mean: {', '.join(sug)}?" if sug else ""
+                validation_warnings.append(f"Unknown preset '{pname}'.{hint}")
         return merged
 
-    raw_beats = [_apply_preset(b) for b in data.get("beats", [])]
     bpm = float(data["bpm"]) if data.get("bpm") is not None else None
     beat_offset = float(data.get("beat_offset", 0.0))
+    default_beat_dur = float(data.get("default_beat_dur", 2.5))
+    cursor_t = 0.0
 
-    def _resolve_beat_time(b: dict) -> float:
+    beats: list[StoryBeat] = []
+    for idx, (raw_b, beat_cast) in enumerate(raw_beat_items):
+        b = _merge_beat(raw_b)
+        for k in raw_b:
+            if k not in _VALID_BEAT_KEYS:
+                sug = difflib.get_close_matches(k, sorted(_VALID_BEAT_KEYS), n=2)
+                hint = f" Did you mean: {', '.join(sug)}?" if sug else ""
+                validation_warnings.append(f"Beat {idx}: unknown key '{k}'.{hint}")
+
         if "time" in b and b["time"] is not None:
-            return float(b["time"])
-        if "beat" in b and b["beat"] is not None:
+            t_val = float(b["time"])
+        elif "beat" in b and b["beat"] is not None:
             if not bpm or bpm <= 0:
                 raise ValueError("Beat uses 'beat' index but root 'bpm' is missing or <= 0.")
-            return beat_offset + float(b["beat"]) * (60.0 / bpm)
-        raise ValueError("Each beat must specify 'time' (seconds) or 'beat' (with root 'bpm').")
+            t_val = beat_offset + float(b["beat"]) * (60.0 / bpm)
+        else:
+            t_val = cursor_t
 
-    beats = [
-        StoryBeat(
-            time            = _resolve_beat_time(b),
-            text            = b.get("text", ""),
-            sub             = b.get("sub", ""),
-            tts_text        = str(b.get("tts_text", "")),
-            animation       = b.get("animation", ""),
-            pos             = b.get("pos", "center"),
-            scale           = float(b.get("scale", 1.0)),
-            text_size       = b.get("text_size", "normal"),
-            text_anim       = str(b.get("text_anim", "")),
-            tts_speed       = float(b["tts_speed"])       if b.get("tts_speed")       is not None else None,
-            tts_temperature = float(b["tts_temperature"]) if b.get("tts_temperature") is not None else None,
-            tts_delay       = float(b.get("tts_delay", 0.0)),
-            after_gap       = float(b["after_gap"]) if "after_gap" in b else None,
-            rich_text       = _load_rich_text(b.get("rich_text")),
-            rich_text_sub   = _load_rich_text(b.get("rich_text_sub")),
-            bg_image        = b.get("bg_image", ""),
-            character       = b.get("character", ""),
-            motion          = b.get("motion", ""),
-            motion_speed    = float(b.get("motion_speed", 1.0)),
-            motion_intensity = float(b.get("motion_intensity", 1.0)),
-            camera          = b.get("camera", ""),
-            camera_intensity = float(b.get("camera_intensity", 1.0)),
-            transition      = b.get("transition", ""),
-            transition_dur  = float(b.get("transition_dur", 0.22)),
-            actors          = _load_actors(b.get("actors")),
-            accessories     = _load_accessories(b.get("accessories")),
-            vfx             = _load_vfx(b.get("vfx")),
-            sfx             = _load_sfx(b.get("sfx")),
-            ground_shadow   = bool(b.get("ground_shadow", True)),
-            move_to         = b.get("move_to") or b.get("pos_to"),
-            path            = b.get("path") or b.get("waypoints"),
-            move_speed      = float(b.get("move_speed", 1.0)),
-            move_ease       = str(b.get("move_ease", "smooth")),
-            move_dur        = float(b["move_dur"]) if "move_dur" in b else None,
-            auto_tilt       = b.get("auto_tilt", True),
-            auto_flip       = bool(b.get("auto_flip", True)),
-            loop_path       = bool(b.get("loop_path", False)),
-            scale_to        = float(b["scale_to"]) if b.get("scale_to") is not None else None,
-            rotate_to       = float(b["rotate_to"]) if b.get("rotate_to") is not None else None,
-            opacity         = float(b.get("opacity", 1.0)),
-            fade_in         = float(b.get("fade_in", 0.0)),
-            fade_out        = float(b.get("fade_out", 0.0)),
-            delay           = float(b.get("delay", 0.0)),
+        dur_val = float(b["dur"]) if b.get("dur") is not None else None
+        cursor_t = t_val + (dur_val if dur_val is not None else default_beat_dur)
+
+        beats.append(
+            StoryBeat(
+                time            = t_val,
+                dur             = dur_val,
+                text            = b.get("text", ""),
+                sub             = b.get("sub", ""),
+                tts_text        = str(b.get("tts_text", "")),
+                animation       = b.get("animation", ""),
+                pos             = b.get("pos", "center"),
+                scale           = float(b.get("scale", 1.0)),
+                text_size       = b.get("text_size", "normal"),
+                text_anim       = str(b.get("text_anim", "")),
+                tts_speed       = float(b["tts_speed"])       if b.get("tts_speed")       is not None else None,
+                tts_temperature = float(b["tts_temperature"]) if b.get("tts_temperature") is not None else None,
+                tts_delay       = float(b.get("tts_delay", 0.0)),
+                after_gap       = float(b["after_gap"]) if "after_gap" in b else None,
+                rich_text       = _load_rich_text(b.get("rich_text")),
+                rich_text_sub   = _load_rich_text(b.get("rich_text_sub")),
+                bg              = str(b.get("bg", "")),
+                bg_image        = b.get("bg_image", ""),
+                character       = b.get("character", ""),
+                flip_x          = bool(b.get("flip_x", False)),
+                cat_rotate      = float(b.get("cat_rotate", 0.0)),
+                motion          = b.get("motion", ""),
+                motion_speed    = float(b.get("motion_speed", 1.0)),
+                motion_intensity = float(b.get("motion_intensity", 1.0)),
+                camera          = b.get("camera", ""),
+                camera_intensity = float(b.get("camera_intensity", 1.0)),
+                transition      = b.get("transition", ""),
+                transition_dur  = float(b.get("transition_dur", 0.22)),
+                actors          = _load_actors(b.get("actors"), cast=beat_cast, warnings=validation_warnings, beat_idx=idx),
+                accessories     = _load_accessories(b.get("accessories")),
+                vfx             = _load_vfx(b.get("vfx")),
+                sfx             = _load_sfx(b.get("sfx")),
+                ground_shadow   = bool(b.get("ground_shadow", True)),
+                move_to         = b.get("move_to") or b.get("pos_to"),
+                path            = b.get("path") or b.get("waypoints"),
+                move_speed      = float(b.get("move_speed", 1.0)),
+                move_ease       = str(b.get("move_ease", "smooth")),
+                move_dur        = float(b["move_dur"]) if b.get("move_dur") is not None else None,
+                auto_tilt       = b.get("auto_tilt", True),
+                auto_flip       = bool(b.get("auto_flip", True)),
+                loop_path       = bool(b.get("loop_path", False)),
+                scale_to        = float(b["scale_to"]) if b.get("scale_to") is not None else None,
+                rotate_to       = float(b["rotate_to"]) if b.get("rotate_to") is not None else None,
+                opacity         = float(b.get("opacity", 1.0)),
+                fade_in         = float(b.get("fade_in", 0.0)),
+                fade_out        = float(b.get("fade_out", 0.0)),
+                delay           = float(b.get("delay", 0.0)),
+            )
         )
-        for b in raw_beats
-    ]
+
+    default_char = data.get("character", "")
+    if not default_char and not any(b.actors for b in beats):
+        default_char = "dimsum_cat"
+    default_anim = data.get("animation") or data.get("default_animation") or ""
+    if not default_anim and default_char:
+        default_anim = _first_char_animation(default_char) or args.animation
+
+    if data.get("duration") is not None:
+        duration_val = float(data["duration"])
+    elif beats:
+        duration_val = max(cursor_t, max(b.time + (b.dur or 2.0) for b in beats))
+    else:
+        duration_val = float(args.duration)
+
     output_name = data.get("output", args.output) or story_dir.name
     return RenderConfig(
         beats             = beats,
-        default_animation = data.get("animation") or data.get("default_animation") or args.animation,
+        default_animation = default_anim,
         output_name       = output_name,
         story_dir         = story_dir,
         title             = data.get("title", ""),
         description       = data.get("description", ""),
-        duration          = float(data.get("duration", args.duration)),
+        duration          = duration_val,
         fps               = int(data.get("fps", args.fps)),
         width             = int(data.get("width", args.width)),
         height            = int(data.get("height", args.height)),
         bg                = data.get("bg", args.bg),
         bg_image          = _resolve_story_path(data.get("bg_image", ""), story_dir),
-        default_character = data.get("character", "dimsum_cat"),
+        default_character = default_char,
         watermark         = data.get("watermark", args.watermark),
         save_gif          = args.gif,
         tts               = data.get("tts", args.tts),
@@ -367,6 +529,7 @@ def load_story_file(path: Path, args: argparse.Namespace) -> RenderConfig:
         beat_offset       = beat_offset,
         auto_beat_zoom    = float(data.get("auto_beat_zoom", 0.0)),
         save_frames       = getattr(args, "save_frames", False),
+        validation_warnings = validation_warnings,
     )
 
 
@@ -915,10 +1078,25 @@ def render_storyboard(config: RenderConfig, out_path: Path) -> Path:
     return out_path
 
 
+def _get_font_cmap() -> set[int] | None:
+    """Return supported Unicode codepoints in the primary UI font (cached, optional)."""
+    font_path = ASSETS_ROOT / "fonts" / "Jua-Regular.ttf"
+    if not font_path.exists():
+        return None
+    try:
+        from fontTools.ttLib import TTFont  # type: ignore[import]
+        tt = TTFont(str(font_path), fontNumber=0)
+        cmap = tt.getBestCmap() or {}
+        tt.close()
+        return set(cmap.keys())
+    except Exception:
+        return None
+
+
 def validate_story(config: RenderConfig) -> list[str]:
     """Run fast pre-flight checks on a RenderConfig and return a list of error strings."""
     import difflib
-    errors: list[str] = []
+    errors: list[str] = list(getattr(config, "validation_warnings", []) or [])
     if not config.beats:
         errors.append("Story has no beats.")
 
@@ -934,6 +1112,7 @@ def validate_story(config: RenderConfig) -> list[str]:
         sorted(d.name for d in SPRITES_ROOT.iterdir() if d.is_dir() and (d / "animations").is_dir())
         if SPRITES_ROOT.is_dir() else []
     )
+    font_cmap = _get_font_cmap()
 
     for idx, b in enumerate(config.beats):
         if b.bg_image and not Path(b.bg_image).exists():
@@ -960,8 +1139,18 @@ def validate_story(config: RenderConfig) -> list[str]:
                     errors.append(
                         f"Beat {idx}: missing animation '{actor.animation}' for character '{actor.character}'.{hint}"
                     )
-        if any("가" <= c <= "힣" for c in (b.text + b.sub)):
+        combined_text = b.text + b.sub
+        if any("가" <= c <= "힣" for c in combined_text):
             errors.append(f"Beat {idx}: Hangul found in visual text/sub (screen text should be English)")
+        elif font_cmap is not None:
+            missing_chars = sorted({
+                ch for ch in combined_text
+                if not ch.isspace() and ord(ch) not in font_cmap
+            })
+            if missing_chars:
+                errors.append(
+                    f"Beat {idx}: unsupported font glyph(s) in text/sub: {''.join(missing_chars)}"
+                )
     return errors
 
 
