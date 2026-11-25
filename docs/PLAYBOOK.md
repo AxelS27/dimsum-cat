@@ -13,14 +13,10 @@ Tell the AI agent:
 
 ### AI Generation Flow
 
-1. **Pick the character(s)** from `assets/sprites/` (no fixed main character — use whichever character fits the concept, or mix multiple characters via `actors`)
-2. **Check available animations** by listing the character's animations folder:
-   `assets/sprites/<character_name>/animations/`
-   → Do NOT rely on any hardcoded animation list. Always read the actual folder. New animations may have been added.
-3. **Read** `content/_template/story.yaml` (or `story.json`) as the base
-4. **Copy** the template structure — do not start from scratch
-5. **Fill in** all fields based on the idea and rules below, picking animations from what actually exists in step 2
-6. **Output** the completed `story.yaml` / `story.json`
+1. **Run `--describe` first** (`python video_generator.py --describe`) to get the live JSON catalog of all characters, animations, music, SFX, camera types, motion presets, VFX, and semantic `beat_presets`
+2. **Read** `content/_template/story.yaml` (or `story.json`) as the base
+3. **Author** the story using `preset` (e.g. `panic_zoom`, `cute_blush`, `dance_drop`, `slapstick_hit`, `pov_whisper`, `dramatic_reveal`) or explicit fields
+4. **Validate** with `--validate --json` and visually self-check beats with `--storyboard` (`storyboard.png`) before final render
 
 The user saves it to `content/<category>/<name>/story.yaml` (or `story.json`) and renders with:
 ```bash

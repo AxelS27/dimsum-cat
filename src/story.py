@@ -23,8 +23,10 @@ from src.models import (
     RichTextSpan,
     StoryBeat,
     ROOT,
+    ASSETS_ROOT,
     SPRITES_ROOT,
     CONTENT_ROOT,
+    POSITIONS,
     TEXT_SIZES,
 )
 from src.utils import (
@@ -60,6 +62,51 @@ DEFAULT_STORY = [
     StoryBeat(time=9.5,  text="Love you!",     sub="",
               animation="finger_heart", pos="center",     scale=1.4,  text_size="huge"),
 ]
+
+# High-level semantic beat presets for fast, consistent agentic story authoring
+BEAT_PRESETS: dict[str, dict] = {
+    "panic_zoom": {
+        "camera": "crash_zoom",
+        "camera_intensity": 1.2,
+        "motion": "panic_jitter",
+        "text_anim": "shake",
+        "vfx": ["sweat_drops"],
+    },
+    "cute_blush": {
+        "camera": "slow_zoom_in",
+        "camera_intensity": 0.8,
+        "motion": "float_gentle",
+        "text_anim": "pop",
+        "vfx": ["floating_hearts"],
+    },
+    "dance_drop": {
+        "camera": "zoom_punch",
+        "camera_intensity": 1.2,
+        "motion": "heavy_bounce",
+        "text_anim": "pop",
+        "vfx": ["music_notes", "sparkles"],
+    },
+    "slapstick_hit": {
+        "camera": "rumble",
+        "camera_intensity": 1.4,
+        "motion": "panic_jitter",
+        "text_anim": "shake",
+        "vfx": ["anger_vein"],
+    },
+    "pov_whisper": {
+        "camera": "slow_zoom_in",
+        "camera_intensity": 0.6,
+        "motion": "sleepy_drift",
+        "text_anim": "typewriter",
+    },
+    "dramatic_reveal": {
+        "camera": "crash_zoom",
+        "camera_intensity": 1.1,
+        "motion": "anticipate_hop",
+        "text_anim": "pop",
+        "transition": "flash",
+    },
+}
 
 
 def _resolve_story_path(raw: str, story_dir: Path) -> str:
@@ -206,7 +253,15 @@ def load_story_file(path: Path, args: argparse.Namespace) -> RenderConfig:
         data = yaml.safe_load(raw_text) or {}
     else:
         data = json.loads(raw_text) or {}
-    raw_beats = data.get("beats", [])
+    def _apply_preset(b: dict) -> dict:
+        pname = str(b.get("preset", "") or "").strip()
+        if not pname or pname not in BEAT_PRESETS:
+            return b
+        merged = dict(BEAT_PRESETS[pname])
+        merged.update(b)
+        return merged
+
+    raw_beats = [_apply_preset(b) for b in data.get("beats", [])]
     bpm = float(data["bpm"]) if data.get("bpm") is not None else None
     beat_offset = float(data.get("beat_offset", 0.0))
 
@@ -393,7 +448,10 @@ Demo (built-in 4-beat story):
 """,
     )
     p.add_argument("--list-animations", action="store_true", help="List available animations and exit.")
+    p.add_argument("--describe", action="store_true", help="Print live engine capabilities, characters, animations, and assets as JSON.")
     p.add_argument("--validate", action="store_true", help="Validate story assets, animations, and text rules without rendering.")
+    p.add_argument("--storyboard", action="store_true", help="Render a 1-image beat contact sheet (storyboard.png) for visual inspection.")
+    p.add_argument("--json", action="store_true", dest="json_output", help="Emit machine-readable JSON output.")
     p.add_argument("--demo",   action="store_true", help="Render the built-in demo story.")
     p.add_argument("--story",  type=Path,           help="Path to a story JSON file.")
 
@@ -760,8 +818,106 @@ def render(config: RenderConfig, tts_only: bool = False, audio_only: bool = Fals
     return {"frames_dir": (frames_dir if config.save_frames else None), "mp4": mp4_path, "gif": gif_path if gif_created else None}
 
 
+def describe_capabilities() -> dict:
+    """Dynamically inspect live engine capabilities, characters, animations, and assets."""
+    import src.motion as _motion_mod
+
+    characters: dict[str, list[str]] = {}
+    if SPRITES_ROOT.is_dir():
+        for ch_dir in sorted(SPRITES_ROOT.iterdir()):
+            if ch_dir.is_dir() and (ch_dir / "animations").is_dir():
+                anims = sorted(
+                    d.name for d in (ch_dir / "animations").iterdir() if d.is_dir()
+                )
+                characters[ch_dir.name] = anims
+
+    def _list_rel(folder: Path, exts: tuple[str, ...]) -> list[str]:
+        if not folder.is_dir():
+            return []
+        return sorted(
+            p.relative_to(ROOT).as_posix()
+            for p in folder.rglob("*")
+            if p.is_file() and p.suffix.lower() in exts
+        )
+
+    motion_presets = sorted(
+        name[len("motion_"):]
+        for name in dir(_motion_mod)
+        if name.startswith("motion_") and callable(getattr(_motion_mod, name))
+    )
+
+    return {
+        "characters": characters,
+        "assets": {
+            "music": _list_rel(ASSETS_ROOT / "music", (".mp3", ".wav", ".ogg", ".m4a")),
+            "sfx": _list_rel(ASSETS_ROOT / "sfx", (".mp3", ".wav", ".ogg")),
+            "backgrounds": _list_rel(ASSETS_ROOT / "backgrounds", (".png", ".jpg", ".jpeg", ".webp"))
+            + _list_rel(ASSETS_ROOT / "background", (".png", ".jpg", ".jpeg", ".webp")),
+        },
+        "positions": list(POSITIONS.keys()),
+        "text_sizes": list(TEXT_SIZES.keys()),
+        "text_anims": ["", "pop", "shake", "typewriter"],
+        "motion_presets": motion_presets,
+        "camera_types": [
+            "static", "hold", "crash_zoom", "zoom_punch", "slow_zoom_in",
+            "slow_zoom_out", "tracking", "whip_pan", "dutch_tilt", "rumble", "sway",
+        ],
+        "vfx_types": [
+            "floating_hearts", "sparkles", "sweat_drops",
+            "anger_vein", "question_marks", "music_notes",
+        ],
+        "transitions": ["none", "crossfade", "circle_wipe", "dip_black", "flash"],
+        "beat_presets": BEAT_PRESETS,
+        "tts_engines": ["gpt_sovits", "edge"],
+    }
+
+
+def render_storyboard(config: RenderConfig, out_path: Path) -> Path:
+    """Render a 1-image beat contact sheet grid for quick agentic visual self-check."""
+    from PIL import Image, ImageDraw
+    import math
+    from src.utils import find_font
+
+    beats = sorted(config.beats, key=lambda b: b.time)
+    if not beats:
+        raise ValueError("Cannot render storyboard for a story with no beats.")
+
+    thumb_w, thumb_h = 270, 480
+    cols = min(4, len(beats))
+    rows = math.ceil(len(beats) / cols)
+    pad = 12
+    sheet = Image.new("RGBA", (cols * (thumb_w + pad) + pad, rows * (thumb_h + pad) + pad), (24, 24, 28, 255))
+    draw = ImageDraw.Draw(sheet)
+    label_font = find_font(16, bold=True)
+
+    # Render at preview size for speed, picking 1 frame per beat
+    orig_w, orig_h, orig_fps = config.width, config.height, config.fps
+    config.width, config.height, config.fps = thumb_w, thumb_h, 10
+    try:
+        for i, b in enumerate(beats):
+            next_t = beats[i + 1].time if i + 1 < len(beats) else config.duration
+            sample_t = min(config.duration - 0.05, b.time + min(0.4, max(0.05, (next_t - b.time) * 0.4)))
+            frame_idx = max(0, int(sample_t * config.fps))
+            frames = render_video_frames(config, frame_start=frame_idx, frame_end=frame_idx + 1)
+            thumb = frames[0] if frames else Image.new("RGBA", (thumb_w, thumb_h), (40, 40, 45, 255))
+            r, c = divmod(i, cols)
+            x = pad + c * (thumb_w + pad)
+            y = pad + r * (thumb_h + pad)
+            sheet.alpha_composite(thumb, (x, y))
+            label = f"B{i} {b.time:.1f}s"
+            draw.rectangle([x + 4, y + 4, x + 104, y + 26], fill=(0, 0, 0, 180))
+            draw.text((x + 8, y + 6), label, font=label_font, fill=(255, 255, 255, 255))
+    finally:
+        config.width, config.height, config.fps = orig_w, orig_h, orig_fps
+
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    sheet.convert("RGB").save(out_path)
+    return out_path
+
+
 def validate_story(config: RenderConfig) -> list[str]:
     """Run fast pre-flight checks on a RenderConfig and return a list of error strings."""
+    import difflib
     errors: list[str] = []
     if not config.beats:
         errors.append("Story has no beats.")
@@ -774,6 +930,11 @@ def validate_story(config: RenderConfig) -> list[str]:
         if not config.gpt_sovits_ref or not Path(config.gpt_sovits_ref).exists():
             errors.append(f"gpt_sovits_ref not found: {config.gpt_sovits_ref}")
 
+    known_chars = (
+        sorted(d.name for d in SPRITES_ROOT.iterdir() if d.is_dir() and (d / "animations").is_dir())
+        if SPRITES_ROOT.is_dir() else []
+    )
+
     for idx, b in enumerate(config.beats):
         if b.bg_image and not Path(b.bg_image).exists():
             errors.append(f"Beat {idx}: bg_image not found: {b.bg_image}")
@@ -785,10 +946,19 @@ def validate_story(config: RenderConfig) -> list[str]:
                     errors.append(f"Beat {idx}: sfx not found: {sfx_file}")
         for actor in b.get_actors(config.default_character, config.default_animation):
             if actor.character and actor.animation:
-                anim_dir = SPRITES_ROOT / actor.character / "animations" / actor.animation
-                if not anim_dir.is_dir():
+                char_dir = SPRITES_ROOT / actor.character
+                anim_dir = char_dir / "animations" / actor.animation
+                if not char_dir.is_dir():
+                    sug = difflib.get_close_matches(actor.character, known_chars, n=3)
+                    hint = f" Did you mean: {', '.join(sug)}?" if sug else ""
+                    errors.append(f"Beat {idx}: missing character '{actor.character}'.{hint}")
+                elif not anim_dir.is_dir():
+                    anims_root = char_dir / "animations"
+                    avail = sorted(d.name for d in anims_root.iterdir() if d.is_dir()) if anims_root.is_dir() else []
+                    sug = difflib.get_close_matches(actor.animation, avail, n=3)
+                    hint = f" Did you mean: {', '.join(sug)}?" if sug else ""
                     errors.append(
-                        f"Beat {idx}: missing animation '{actor.animation}' for character '{actor.character}'"
+                        f"Beat {idx}: missing animation '{actor.animation}' for character '{actor.character}'.{hint}"
                     )
         if any("가" <= c <= "힣" for c in (b.text + b.sub)):
             errors.append(f"Beat {idx}: Hangul found in visual text/sub (screen text should be English)")
@@ -798,6 +968,10 @@ def validate_story(config: RenderConfig) -> list[str]:
 def main() -> None:
     parser = build_parser()
     args = parser.parse_args()
+
+    if args.describe:
+        print(json.dumps(describe_capabilities(), indent=2))
+        return
 
     if args.list_animations:
         for name in list_animations():
@@ -810,11 +984,27 @@ def main() -> None:
             sys.exit(2)
         cfg = load_story_json(args.story, args)
         errs = validate_story(cfg)
+        if getattr(args, "json_output", False):
+            print(json.dumps({"ok": len(errs) == 0, "beats": len(cfg.beats), "errors": errs}, indent=2))
+            sys.exit(1 if errs else 0)
         if errs:
             for err in errs:
                 print(f"  [ERROR] {err}")
             sys.exit(1)
         print(f"  [OK] Story validated: {len(cfg.beats)} beat(s), no issues found.")
+        return
+
+    if getattr(args, "storyboard", False):
+        if not args.story:
+            print("ERROR: --storyboard requires --story <path>")
+            sys.exit(2)
+        cfg = load_story_json(args.story, args)
+        out_path = (cfg.story_dir or ROOT / "_scratch") / "storyboard.png"
+        saved = render_storyboard(cfg, out_path)
+        if getattr(args, "json_output", False):
+            print(json.dumps({"ok": True, "storyboard": str(saved), "beats": len(cfg.beats)}, indent=2))
+        else:
+            print(f"  [OK] Storyboard saved: {saved}")
         return
 
     tts_only    = getattr(args, "tts_only",    False)

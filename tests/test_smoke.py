@@ -7,7 +7,7 @@ from pathlib import Path
 from src.camera import compute_camera
 from src.models import Accessory, ActorConfig, StoryBeat
 from src.renderer import _fast_resize, _fast_rotate, iter_video_frames
-from src.story import build_parser, load_story_file, validate_story
+from src.story import build_parser, describe_capabilities, load_story_file, render_storyboard, validate_story
 from src.tts import _detect_emotion, _resolve_tts_lang, _should_speak
 from src.vfx import render_vfx_layer
 
@@ -187,6 +187,40 @@ class EngineSmokeTests(unittest.TestCase):
         self.assertEqual(rotated.mode, "RGBA")
         self.assertGreater(rotated.width, 80)
         self.assertGreater(rotated.height, 40)
+
+    def test_describe_and_presets_and_storyboard(self) -> None:
+        import json, tempfile
+        caps = describe_capabilities()
+        self.assertIn("dimsum_cat", caps["characters"])
+        self.assertIn("panic_zoom", caps["beat_presets"])
+        self.assertIn("typewriter", caps["text_anims"])
+
+        # Fuzzy suggestion on typo
+        template_dir = ROOT / "content" / "_template"
+        cfg = load_story_file(template_dir, build_parser().parse_args([]))
+        cfg.beats[0].animation = "normal_talkk"
+        errs = validate_story(cfg)
+        self.assertTrue(any("Did you mean" in e and "normal_talk" in e for e in errs))
+
+        # Preset expansion + storyboard generation
+        with tempfile.TemporaryDirectory() as tmp:
+            p = Path(tmp) / "story.json"
+            p.write_text(
+                json.dumps({
+                    "title": "Preset Test",
+                    "duration": 2.0,
+                    "beats": [
+                        {"time": 0.0, "text": "Wait!", "animation": "normal_talk", "preset": "panic_zoom"},
+                        {"time": 1.0, "text": "Yay!", "animation": "normal_talk", "preset": "dance_drop"},
+                    ],
+                }),
+                encoding="utf-8",
+            )
+            pcfg = load_story_file(p, build_parser().parse_args([]))
+            self.assertEqual(pcfg.beats[0].text_anim, "shake")
+            self.assertEqual(pcfg.beats[1].motion, "heavy_bounce")
+            sb_path = render_storyboard(pcfg, Path(tmp) / "storyboard.png")
+            self.assertTrue(sb_path.exists())
 
 
 if __name__ == "__main__":

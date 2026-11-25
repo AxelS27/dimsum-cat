@@ -36,6 +36,7 @@ _tts_tmp/
 _scratch/
 *.tmp
 *_preview*.png
+storyboard*.png
 *crop_preview*/
 debug_cells/
 test_crop/
