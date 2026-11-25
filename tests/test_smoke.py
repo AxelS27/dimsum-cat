@@ -6,7 +6,7 @@ from pathlib import Path
 
 from src.camera import compute_camera
 from src.models import Accessory, ActorConfig, StoryBeat
-from src.renderer import iter_video_frames
+from src.renderer import _fast_resize, _fast_rotate, iter_video_frames
 from src.story import build_parser, load_story_file, validate_story
 from src.tts import _detect_emotion, _resolve_tts_lang, _should_speak
 from src.vfx import render_vfx_layer
@@ -176,6 +176,17 @@ class EngineSmokeTests(unittest.TestCase):
         ]
         frames = list(iter_video_frames(cfg))
         self.assertEqual(len(frames), 2)
+
+    def test_fast_resize_and_rotate_preserve_rgba(self) -> None:
+        from PIL import Image
+        img = Image.new("RGBA", (40, 20), (255, 100, 50, 200))
+        resized = _fast_resize(img, (80, 40))
+        self.assertEqual(resized.size, (80, 40))
+        self.assertEqual(resized.mode, "RGBA")
+        rotated = _fast_rotate(resized, 30.0)
+        self.assertEqual(rotated.mode, "RGBA")
+        self.assertGreater(rotated.width, 80)
+        self.assertGreater(rotated.height, 40)
 
 
 if __name__ == "__main__":

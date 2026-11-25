@@ -5,6 +5,49 @@ from typing import Iterator
 
 from PIL import Image, ImageDraw, ImageFilter
 
+try:
+    import cv2  # type: ignore[import]
+    import numpy as np  # type: ignore[import]
+    _HAS_CV2 = True
+except ImportError:
+    cv2 = None  # type: ignore[assignment]
+    np = None  # type: ignore[assignment]
+    _HAS_CV2 = False
+
+
+def _fast_resize(img: Image.Image, size: tuple[int, int]) -> Image.Image:
+    """Fast bilinear resize using OpenCV when available, with Pillow fallback."""
+    if _HAS_CV2 and size[0] > 0 and size[1] > 0:
+        arr = np.asarray(img)
+        resized = cv2.resize(arr, size, interpolation=cv2.INTER_LINEAR)
+        return Image.fromarray(resized, mode=img.mode)
+    return img.resize(size, Image.Resampling.BILINEAR)
+
+
+def _fast_rotate(img: Image.Image, angle_deg: float) -> Image.Image:
+    """Fast counter-clockwise expand=True rotation using OpenCV when available."""
+    if _HAS_CV2:
+        arr = np.asarray(img)
+        h, w = arr.shape[:2]
+        rad = math.radians(angle_deg)
+        cos_a = abs(math.cos(rad))
+        sin_a = abs(math.sin(rad))
+        new_w = max(1, int(math.ceil(w * cos_a + h * sin_a)))
+        new_h = max(1, int(math.ceil(w * sin_a + h * cos_a)))
+        mat = cv2.getRotationMatrix2D((w / 2.0, h / 2.0), angle_deg, 1.0)
+        mat[0, 2] += (new_w - w) / 2.0
+        mat[1, 2] += (new_h - h) / 2.0
+        rotated = cv2.warpAffine(
+            arr,
+            mat,
+            (new_w, new_h),
+            flags=cv2.INTER_LINEAR,
+            borderMode=cv2.BORDER_CONSTANT,
+            borderValue=(0, 0, 0, 0),
+        )
+        return Image.fromarray(rotated, mode=img.mode)
+    return img.rotate(angle_deg, expand=True, resample=Image.Resampling.BILINEAR)
+
 from src.models import (
     ActorConfig,
     RenderConfig,
@@ -92,7 +135,7 @@ def make_background(
 
         cropped = base_ov.crop((x0, y0, x0 + view_w, y0 + view_h))
         if cropped.size != size:
-            return cropped.resize(size, Image.Resampling.BILINEAR)
+            return _fast_resize(cropped, size)
         return cropped
 
     cache_key = f"solid:{size[0]}x{size[1]}:{bg_hex}"
@@ -396,11 +439,11 @@ def _render_accessory(
 
     target_w = max(1, int(config.width * eff_scale))
     ratio = target_w / acc_img.width
-    acc_img = acc_img.resize((target_w, max(1, int(acc_img.height * ratio))), Image.Resampling.BILINEAR)
+    acc_img = _fast_resize(acc_img, (target_w, max(1, int(acc_img.height * ratio))))
     if eff_flip:
         acc_img = acc_img.transpose(Image.Transpose.FLIP_LEFT_RIGHT)
     if abs(eff_rot) > 0.3:
-        acc_img = acc_img.rotate(-eff_rot, expand=True, resample=Image.Resampling.BILINEAR)
+        acc_img = _fast_rotate(acc_img, -eff_rot)
 
     if anchor_px is not None:
         ax = int(anchor_px[0] - acc_img.width // 2)
@@ -698,7 +741,7 @@ def iter_video_frames(
             sf = target_cat_w / (orig_w * SPRITE_UPSCALE)
             new_w = max(1, int(sprite.width  * sf * sq_x))
             new_h = max(1, int(sprite.height * sf * sq_y))
-            sprite = sprite.resize((new_w, new_h), Image.Resampling.BILINEAR)
+            sprite = _fast_resize(sprite, (new_w, new_h))
 
             # Dynamic orientation (auto-flip to face walking direction or manual flip)
             if traj.flip_x:
@@ -706,13 +749,18 @@ def iter_video_frames(
 
             # Rotate
             if abs(rot_deg) > 0.3:
-                sprite = sprite.rotate(rot_deg, expand=True, resample=Image.Resampling.BILINEAR)
+                sprite = _fast_rotate(sprite, rot_deg)
 
             # Apply keyframed / fade opacity
             if eff_opacity < 0.999:
-                r_c, g_c, b_c, a_c = sprite.split()
-                a_c = a_c.point(lambda p, mult=eff_opacity: int(p * mult))
-                sprite = Image.merge("RGBA", (r_c, g_c, b_c, a_c))
+                if _HAS_CV2:
+                    arr = np.array(sprite, copy=True)
+                    arr[:, :, 3] = (arr[:, :, 3].astype(np.float32) * eff_opacity).astype(np.uint8)
+                    sprite = Image.fromarray(arr, mode="RGBA")
+                else:
+                    r_c, g_c, b_c, a_c = sprite.split()
+                    a_c = a_c.point(lambda p, mult=eff_opacity: int(p * mult))
+                    sprite = Image.merge("RGBA", (r_c, g_c, b_c, a_c))
 
             # Anchor coordinates
             sx = int(config.width  * screen_cx - sprite.width  // 2)
