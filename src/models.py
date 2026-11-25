@@ -137,6 +137,7 @@ class StoryBeat:
     pos: str | list | tuple = "center"    # named position or "cx,cy" or [cx, cy]
     scale: float = 1.0     # character scale multiplier
     text_size: str = "normal"  # small | normal | big | huge
+    text_anim: str = ""        # "" (default), "pop", "shake", "typewriter"
     tts_speed: float | None = None        # override auto-detected speed
     tts_temperature: float | None = None  # override auto-detected temperature
     tts_delay: float = 0.0                # delay speech relative to this beat's visual time

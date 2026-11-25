@@ -208,6 +208,7 @@ def load_story_file(path: Path, args: argparse.Namespace) -> RenderConfig:
             pos             = b.get("pos", "center"),
             scale           = float(b.get("scale", 1.0)),
             text_size       = b.get("text_size", "normal"),
+            text_anim       = str(b.get("text_anim", "")),
             tts_speed       = float(b["tts_speed"])       if b.get("tts_speed")       is not None else None,
             tts_temperature = float(b["tts_temperature"]) if b.get("tts_temperature") is not None else None,
             tts_delay       = float(b.get("tts_delay", 0.0)),

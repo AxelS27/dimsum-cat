@@ -136,6 +136,21 @@ class EngineSmokeTests(unittest.TestCase):
             frames = list(iter_video_frames(cfg))
             self.assertEqual(len(frames), 10)
 
+    def test_kinetic_typography_modes_render(self) -> None:
+        template_dir = ROOT / "content" / "_template"
+        cfg = load_story_file(template_dir, build_parser().parse_args([]))
+        cfg.duration = 0.6
+        cfg.fps = 10
+        cfg.width = 360
+        cfg.height = 640
+        cfg.beats = [
+            StoryBeat(time=0.0, text="Typewriter!", animation="normal_talk", text_anim="typewriter"),
+            StoryBeat(time=0.2, text="PANIC!!", animation="normal_talk", text_anim="shake"),
+            StoryBeat(time=0.4, text="POP!", animation="normal_talk", text_anim="pop"),
+        ]
+        frames = list(iter_video_frames(cfg))
+        self.assertEqual(len(frames), 6)
+
 
 if __name__ == "__main__":
     unittest.main()

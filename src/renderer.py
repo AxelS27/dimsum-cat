@@ -226,6 +226,7 @@ def draw_text_overlay(
     rich_text: list[RichTextSpan] | None = None,
     rich_text_sub: list[RichTextSpan] | None = None,
     y_offset: int = 0,
+    x_offset: int = 0,
 ) -> None:
     """Render text directly on canvas — no card/box, drop shadow only."""
     rich_text     = rich_text     or []
@@ -233,9 +234,9 @@ def draw_text_overlay(
     if not text and not sub and not rich_text and not rich_text_sub:
         return
 
-    # Fast cache lookup for steady-state frames (alpha=255, y_offset=0)
+    # Fast cache lookup for steady-state frames (alpha=255, x_offset=0, y_offset=0)
     cache_key = None
-    if alpha == 255 and y_offset == 0:
+    if alpha == 255 and y_offset == 0 and x_offset == 0:
         rt_key = tuple((s.text, s.color) for s in rich_text) if rich_text else ()
         rts_key = tuple((s.text, s.color) for s in rich_text_sub) if rich_text_sub else ()
         cache_key = (text, sub, size_key, round(w_scale, 3), rt_key, rts_key, canvas.width, canvas.height)
@@ -294,13 +295,13 @@ def draw_text_overlay(
     if rich_rows:
         for row in rich_rows:
             w, h = _measure_rich_line(draw, row, main_font)
-            x = (canvas.width - w) // 2
+            x = (canvas.width - w) // 2 + x_offset
             _draw_rich_line(draw, row, main_font, x, y, alpha)
             y += h + gap_ln
     else:
         for line in main_lines:
             w, h = measure(draw, line, main_font)
-            x = (canvas.width - w) // 2
+            x = (canvas.width - w) // 2 + x_offset
             shadow_a = int(80 * alpha / 255)
             draw.text((x + 4, y + 4), line, font=main_font, fill=(0, 0, 0, shadow_a), stroke_width=7, stroke_fill=(0, 0, 0, shadow_a))
             draw.text((x, y), line, font=main_font, fill=(42, 42, 42, alpha), stroke_width=7, stroke_fill=(255, 255, 255, alpha))
@@ -310,14 +311,14 @@ def draw_text_overlay(
         y += gap_blk
         for row in rich_sub_rows:
             w, h = _measure_rich_line(draw, row, sub_font)
-            x = (canvas.width - w) // 2
+            x = (canvas.width - w) // 2 + x_offset
             _draw_rich_line(draw, row, sub_font, x, y, alpha)
             y += h + gap_ln
     elif sub_lines:
         y += gap_blk
         for line in sub_lines:
             w, h = measure(draw, line, sub_font)
-            x = (canvas.width - w) // 2
+            x = (canvas.width - w) // 2 + x_offset
             shadow_a = int(70 * alpha / 255)
             draw.text((x + 3, y + 3), line, font=sub_font, fill=(0, 0, 0, shadow_a), stroke_width=5, stroke_fill=(0, 0, 0, shadow_a))
             draw.text((x, y), line, font=sub_font, fill=(30, 30, 30, alpha), stroke_width=5, stroke_fill=(255, 255, 255, alpha))
@@ -766,21 +767,40 @@ def iter_video_frames(
             canvas.alpha_composite(vfx_img)
 
         # ----------------------------------------------------------------
-        # Speech Bubble / Text Overlay
+        # Speech Bubble / Text Overlay (with optional Kinetic Typography)
         # ----------------------------------------------------------------
-        TEXT_ENTRANCE = 0.28
-        if age < TEXT_ENTRANCE:
-            prog = age / TEXT_ENTRANCE
-            spring = ease_out_back(prog)
-            text_y_offset = int((1.0 - spring) * -22.0 * w_scale)
-            text_alpha = min(255, int(255 * (prog ** 0.8))) if beat_idx > 0 else 255
-        else:
+        t_anim = (getattr(beat, "text_anim", "") or "").strip().lower()
+        disp_text = beat.text
+        disp_rich = beat.rich_text
+        text_x_offset = 0
+        if t_anim == "typewriter" and beat.text:
+            reveal_dur = min(max(0.25, len(beat.text) * 0.045), max(0.25, beat_dur * 0.7))
+            frac = min(1.0, age / reveal_dur)
+            n_chars = max(1, int(round(len(beat.text) * frac)))
+            disp_text = beat.text[:n_chars]
+            disp_rich = [] if n_chars < len(beat.text) else beat.rich_text
             text_y_offset = 0
             text_alpha = 255
+        elif t_anim == "shake":
+            text_x_offset = int(math.sin(age * 48.0) * 6.0 * w_scale)
+            text_y_offset = int(math.cos(age * 39.0) * 5.0 * w_scale)
+            text_alpha = 255
+        else:
+            TEXT_ENTRANCE = 0.34 if t_anim == "pop" else 0.28
+            y_amp = -38.0 if t_anim == "pop" else -22.0
+            if age < TEXT_ENTRANCE:
+                prog = age / TEXT_ENTRANCE
+                spring = ease_out_back(prog)
+                text_y_offset = int((1.0 - spring) * y_amp * w_scale)
+                text_alpha = min(255, int(255 * (prog ** 0.8))) if (beat_idx > 0 or t_anim == "pop") else 255
+            else:
+                text_y_offset = 0
+                text_alpha = 255
         draw_text_overlay(
-            canvas, beat.text, beat.sub, beat.text_size,
-            text_alpha, w_scale, beat.rich_text, beat.rich_text_sub,
+            canvas, disp_text, beat.sub, beat.text_size,
+            text_alpha, w_scale, disp_rich, beat.rich_text_sub,
             y_offset=text_y_offset,
+            x_offset=text_x_offset,
         )
 
         # PNG watermark — centred near bottom
