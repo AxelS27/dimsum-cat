@@ -28,10 +28,11 @@ story.yaml (or story.json) → video_generator.py → video.mp4 (with TTS + BGM)
 - **Agentic Workflow (AX) — Always follow when creating/editing videos:**
   1. Run `.venv\Scripts\python video_generator.py --describe` to get the live JSON catalog of characters, animations, music, SFX, camera/motion/VFX presets, and `beat_presets`.
   2. Write `story.yaml` (use `preset`, `bpm`, `scale_to`/`delay`, `text_anim`, and `attach_to` where helpful).
-  3. Fast pre-flight check: `.venv\Scripts\python video_generator.py --story content/<category>/<name> --validate --json`
+  3. Fast pre-flight check: `.venv\Scripts\python video_generator.py --story content/wip/<name> --validate --json`
   4. Visual self-check (recommended): `--storyboard` generates `storyboard.png` for inspection via `read_file` (delete `storyboard.png` afterward if not needed).
-  5. Render draft (`--preview`) or final: `.venv\Scripts\python video_generator.py --story content/<category>/<name>` (add `--json` for structured output).
-- Output: `content/<category>/<name>/video.mp4`
+  5. Render draft (`--preview`) or final: `.venv\Scripts\python video_generator.py --story content/wip/<name>` (add `--json` for structured output).
+- New/active projects live in `content/wip/<name>/`; finished/delivered projects are moved to `content/published/<name>/` (clean of temporary files).
+- Output: `content/wip/<name>/video.mp4`
 
 ## Sprite Pipeline (Gridder)
 

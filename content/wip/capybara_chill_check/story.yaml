@@ -1,0 +1,92 @@
+title: "Capybara Vibe Check"
+description: >
+  Wait for the beat drop...
+  #dimsumcat #kawaii #fyp #foryou #viral #animation #cute #comedy #capybara
+
+fps: 24
+width: 1080
+height: 1920
+duration: 8.0
+bg: "#f0fdf5"
+
+character: "capybara"
+default_animation: "death_stare"
+
+tts: false
+bg_music: "assets/music/pretty_please.mp3"
+bg_volume: 0.14
+
+bpm: 120
+beat_offset: 0.0
+auto_beat_zoom: 0.05
+
+beats:
+  - beat: 0
+    text: "POV: Wait for the drop"
+    text_size: "big"
+    preset: "pov_whisper"
+    animation: "death_stare"
+    pos: [0.50, 0.56]
+    scale: 1.05
+
+  - beat: 4
+    text: "HOLD ON!!"
+    text_size: "huge"
+    preset: "dance_drop"
+    actors:
+      - character: "capybara"
+        animation: "dance"
+        pos: [0.34, 0.58]
+        scale: 1.0
+        motion: "heavy_bounce"
+      - character: "duckling"
+        animation: "dance"
+        pos: [0.68, 0.60]
+        scale: 0.65
+        scale_to: 0.95
+        delay: 0.4
+        fade_in: 0.25
+        motion: "snappy_hops"
+
+  - beat: 8
+    text: "Instant vibe check!"
+    text_size: "big"
+    text_anim: "pop"
+    camera: "slow_zoom_in"
+    vfx:
+      - type: "music_notes"
+        intensity: 1.1
+      - type: "floating_hearts"
+        intensity: 1.0
+    actors:
+      - character: "capybara"
+        animation: "smug_win"
+        pos: [0.34, 0.58]
+        scale: 1.05
+        motion: "organic_groove"
+      - character: "duckling"
+        animation: "giggle"
+        pos: [0.68, 0.60]
+        scale: 0.95
+        motion: "snappy_hops"
+
+  - beat: 12
+    text: "Okay too much vibe!!"
+    text_size: "huge"
+    preset: "slapstick_hit"
+    sfx:
+      - file: "assets/sfx/frying_pan_tyang.mp3"
+        volume: 0.85
+    actors:
+      - character: "capybara"
+        animation: "pout_angry"
+        pos: [0.34, 0.58]
+        scale: 1.05
+        motion: "panic_jitter"
+      - character: "duckling"
+        animation: "bonk_down"
+        pos: [0.68, 0.62]
+        scale: 0.95
+        scale_to: 1.1
+        rotate_to: -10.0
+        motion: "panic_jitter"

@@ -18,10 +18,11 @@ Tell the AI agent:
 3. **Author** the story using `preset` (e.g. `panic_zoom`, `cute_blush`, `dance_drop`, `slapstick_hit`, `pov_whisper`, `dramatic_reveal`) or explicit fields
 4. **Validate** with `--validate --json` and visually self-check beats with `--storyboard` (`storyboard.png`) before final render
 
-The user saves it to `content/<category>/<name>/story.yaml` (or `story.json`) and renders with:
+Save new/active projects to `content/wip/<name>/story.yaml` (or `story.json`) and render with:
 ```bash
-.venv/Scripts/python video_generator.py --story content/<category>/<name>
+.venv/Scripts/python video_generator.py --story content/wip/<name>
 ```
+When a video is finished and approved, move its folder cleanly to `content/published/<name>/`.
 
 Asset paths in story files should use portable root-relative paths like `assets/music/pretty_please.mp3` (legacy `../../../assets/` paths are also supported).
 
@@ -290,4 +291,4 @@ Save as `content/<name>/story.json`:
 - [ ] Description has master # + category #
 - [ ] `bg_music` path exists
 - [ ] If `tts: true`: `gpt_sovits_ref` path exists and GPT-SoVITS server is running at port 9880
-- [ ] Story folder created at `content/<category>/<name>/`
+- [ ] Story folder created at `content/wip/<name>/` (or `content/published/<name>/`)

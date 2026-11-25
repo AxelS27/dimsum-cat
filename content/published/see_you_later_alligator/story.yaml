@@ -1,0 +1,132 @@
+# ==============================================================================
+# DIMsum Cat Story Engine — Story Configuration
+# ==============================================================================
+# Format: YAML 1.2
+# Supports inline comments, clean list coordinates [x, y], and rich text styling.
+
+title: "See You Later Alligator"
+description: >
+  See you later alligator... In a while crocodile! Give a hug ladybug... Blow a kiss jellyfish!
+
+  #dimsumcat #cute #kawaii #fyp #foryou #viral #animation #animals #seeyoulateralligator #trending #chibi #comedy
+
+# --- Render Settings ---
+character: "animals"
+default_animation: "alligator"
+bg: "#f0fdf5"
+bg_image: "assets/backgrounds/bg_swamp_alligator.png"
+fps: 24
+width: 1080
+height: 1920
+duration: 13.8
+
+# --- Audio Configuration ---
+tts: false
+bg_music: "assets/music/see_you_later_alligator_cut.mp3"
+bg_music_start: "00:00"
+bg_volume: 1.0
+
+intro_gap: 0.0
+between_gap: 0.0
+silent_beat_dur: 1.0
+
+watermark: ""
+pinned_comment: "Which cute character was your favorite? 🐊🦎🐞🪼"
+
+# ==============================================================================
+# Story Beats (Timeline)
+# ==============================================================================
+# Each beat defines a scene segment:
+# - time: Start timestamp (in seconds)
+# - text / sub: Main speech bubble / sticker text & subtitle
+# - rich_text: Multi-colored word-by-word text spans
+# - animation: Sprite animation folder inside character
+# - pos: [x, y] normalized coordinates (0.0 to 1.0) or presets ("center", "right")
+# - scale: Sprite magnification factor (1.0 = native 1080p fit)
+# - camera: Virtual camera FX ("zoom_punch", "slow_zoom_in", "sway", "rumble", "flash")
+# - transition: Scene transition into this beat ("crossfade", "circle_wipe", "dip_black")
+# - motion: Physics behavior preset ("pop_in", "squash_bounce", "float_sine", "breathe")
+# ==============================================================================
+
+beats:
+  # Beat 1: Swamp Alligator intro
+  - time: 0.00
+    text: "See you later, alligator..."
+    sub: ""
+    rich_text:
+      - text: "See you later, "
+        color: "#7c2d12"
+      - text: "alligator..."
+        color: "#ea580c"
+    animation: "alligator"
+    character: "animals"
+    pos: [0.40, 0.63]
+    scale: 1.15
+    text_size: "big"
+    bg_image: "assets/backgrounds/bg_swamp_alligator.png"
+    camera: "slow_zoom_in"
+    camera_intensity: 0.6
+    motion: "breathe"
+
+  # Beat 2: River Crocodile punch
+  - time: 3.06
+    text: "In a while, crocodile!"
+    sub: ""
+    rich_text:
+      - text: "In a while, "
+        color: "#881337"
+      - text: "crocodile!"
+        color: "#e11d48"
+    animation: "crocodile"
+    character: "animals"
+    pos: [0.42, 0.65]
+    scale: 1.50
+    text_size: "big"
+    bg_image: "assets/backgrounds/bg_river_crocodile.png"
+    camera: "zoom_punch"
+    camera_intensity: 1.1
+    transition: "crossfade"
+    transition_dur: 0.25
+    motion: "squash_bounce"
+
+  # Beat 3: Garden Ladybug hug
+  - time: 6.80
+    text: "Give a hug, ladybug..."
+    sub: ""
+    rich_text:
+      - text: "Give a hug, "
+        color: "#780000"
+      - text: "ladybug..."
+        color: "#c1121f"
+    animation: "ladybug"
+    character: "animals"
+    pos: [0.68, 0.64]
+    scale: 0.90
+    text_size: "big"
+    bg_image: "assets/backgrounds/bg_garden_ladybug.png"
+    camera: "sway"
+    camera_intensity: 0.8
+    transition: "crossfade"
+    transition_dur: 0.25
+    motion: "pop_in"
+
+  # Beat 4: Ocean Jellyfish blow a kiss
+  - time: 10.06
+    text: "Blow a kiss, jellyfish!"
+    sub: ""
+    rich_text:
+      - text: "Blow a kiss, "
+        color: "#4a0e4e"
+      - text: "jellyfish!"
+        color: "#7b2cbf"
+    animation: "jellyfish"
+    character: "animals"
+    pos: [0.50, 0.47]
+    scale: 1.65
+    text_size: "big"
+    bg_image: "assets/backgrounds/bg_ocean_jellyfish.png"
+    camera: "zoom_punch"
+    camera_intensity: 1.0
+    transition: "circle_wipe"
+    transition_dur: 0.35
+    motion: "float_sine"

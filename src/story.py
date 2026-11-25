@@ -433,7 +433,7 @@ def load_story_file(path: Path, args: argparse.Namespace) -> RenderConfig:
                 tts_speed       = float(b["tts_speed"])       if b.get("tts_speed")       is not None else None,
                 tts_temperature = float(b["tts_temperature"]) if b.get("tts_temperature") is not None else None,
                 tts_delay       = float(b.get("tts_delay", 0.0)),
-                after_gap       = float(b["after_gap"]) if "after_gap" in b else None,
+                after_gap       = float(b["after_gap"]) if b.get("after_gap") is not None else None,
                 rich_text       = _load_rich_text(b.get("rich_text")),
                 rich_text_sub   = _load_rich_text(b.get("rich_text_sub")),
                 bg              = str(b.get("bg", "")),
@@ -1009,13 +1009,19 @@ def describe_capabilities() -> dict:
         if name.startswith("motion_") and callable(getattr(_motion_mod, name))
     )
 
+    wip_projects = sorted(d.name for d in (CONTENT_ROOT / "wip").iterdir() if d.is_dir()) if (CONTENT_ROOT / "wip").is_dir() else []
+    published_projects = sorted(d.name for d in (CONTENT_ROOT / "published").iterdir() if d.is_dir()) if (CONTENT_ROOT / "published").is_dir() else []
+
     return {
         "characters": characters,
+        "projects": {
+            "wip": wip_projects,
+            "published": published_projects,
+        },
         "assets": {
             "music": _list_rel(ASSETS_ROOT / "music", (".mp3", ".wav", ".ogg", ".m4a")),
             "sfx": _list_rel(ASSETS_ROOT / "sfx", (".mp3", ".wav", ".ogg")),
-            "backgrounds": _list_rel(ASSETS_ROOT / "backgrounds", (".png", ".jpg", ".jpeg", ".webp"))
-            + _list_rel(ASSETS_ROOT / "background", (".png", ".jpg", ".jpeg", ".webp")),
+            "backgrounds": _list_rel(ASSETS_ROOT / "backgrounds", (".png", ".jpg", ".jpeg", ".webp")),
         },
         "positions": list(POSITIONS.keys()),
         "text_sizes": list(TEXT_SIZES.keys()),

@@ -1,0 +1,191 @@
+# ==============================================================================
+# DIMsum Cat — Cinematic Director Camera Showcase (Continuous One-Take)
+# ==============================================================================
+# Starring: DIMsum Cat & King Tae-ho
+# Scene: Royal Dining Hall (100% continuous take, zero flashes, smooth camera flow)
+#
+# Camera choreography:
+# - Beat 1: "static" (Calm, stable, motionless establishing shot)
+# - Beat 2: "slow_zoom_in" smoothly glides onto target: "dimsum_cat" + reactive shiver
+# - Beat 3: "crash_zoom" smoothly sweeps across the table onto target: "taeho"
+# - Beat 4: "dutch_tilt" smoothly settles back to the two-shot with subtle tilt
+
+title: "King Tae-ho's Royal Tasting"
+description: >
+  DIMsum Cat serves a top-secret royal dish to King Tae-ho! 🐯🍲🐱
+  Will the royal palate approve?
+
+  #dimsumcat #taeho #chibi #kdrama #animation #cute #kawaii #fyp #viral
+
+# --- Stage & Audio Specs ---
+fps: 24
+width: 1080
+height: 1920
+duration: 12.0
+bg: "#fdf8f4"
+bg_image: "assets/backgrounds/dining_hall.png"
+character: "dimsum_cat"
+default_animation: "normal_talk"
+
+tts: false
+bg_music: "assets/music/yummy_flavor.mp3"
+bg_music_start: "00:00"
+bg_volume: 0.85
+
+watermark: ""
+pinned_comment: "Did King Tae-ho give it 5 stars? ⭐⭐⭐⭐⭐"
+
+# ==============================================================================
+# Beats Timeline (Continuous Camera Flow — Zero Flashes)
+# ==============================================================================
+
+beats:
+  # Beat 1: Establishing Shot — Completely STATIC Camera (rock solid & calm)
+  - time: 0.00
+    text: "Your Majesty, today's royal special!"
+    rich_text:
+      - text: "Your Majesty, "
+        color: "#d97706"
+      - text: "today's royal special!"
+        color: "#2a2a2a"
+    tts_text: "폐하, 오늘의 특선 요리입니다!"
+    text_size: "big"
+    camera: "static"
+    vfx:
+      - type: "sparkles"
+        intensity: 1.0
+    actors:
+      - character: "taeho"
+        animation: "neutral_regal"
+        pos: [0.30, 0.68]
+        scale: 1.25
+        flip_x: false
+        motion: "breathe"
+        motion_speed: 0.8
+        ground_shadow: true
+        z_index: 0
+      - character: "dimsum_cat"
+        animation: "cooking_present"
+        pos: [0.70, 0.69]
+        scale: 1.15
+        flip_x: true
+        motion: "squash_bounce"
+        motion_speed: 1.0
+        ground_shadow: true
+        z_index: 1
+
+  # Beat 2: Suspense — Smooth push-in focusing on DIMsum Cat + Camera shivers in sync with her
+  - time: 3.00
+    text: "Will it suit the royal palate...?"
+    rich_text:
+      - text: "Will it suit the "
+        color: "#2a2a2a"
+      - text: "royal palate...?"
+        color: "#0284c7"
+    tts_text: "과연 폐하의 입맛에 맞을까...?"
+    text_size: "big"
+    camera:
+      type: "slow_zoom_in"
+      target: "dimsum_cat"
+      zoom: 1.15
+      speed: 0.65
+      ease: "smooth"
+      reactive_actor: "dimsum_cat"
+      reactive_factor: 0.25
+    vfx:
+      - type: "sweat_drops"
+    actors:
+      - character: "taeho"
+        animation: "first_bite"
+        pos: [0.30, 0.68]
+        scale: 1.25
+        flip_x: false
+        motion: "breathe"
+        ground_shadow: true
+        z_index: 0
+      - character: "dimsum_cat"
+        animation: "nervous_sweat"
+        pos: [0.70, 0.69]
+        scale: 1.15
+        flip_x: true
+        motion: "shiver_rumble"
+        motion_intensity: 1.2
+        ground_shadow: true
+        z_index: 1
+
+  # Beat 3: CRASH ZOOM! Smoothly sweeps across from DIMsum Cat onto King Tae-ho!
+  - time: 6.00
+    text: "A taste of heaven!! Absolutely delicious!"
+    rich_text:
+      - text: "A taste of heaven!! "
+        color: "#ea580c"
+      - text: "Absolutely delicious!"
+        color: "#dc2626"
+    tts_text: "천상의 맛이다!! 너무 맛있어!"
+    text_size: "huge"
+    camera:
+      type: "crash_zoom"
+      target: "taeho"
+      zoom: 1.30
+      intensity: 1.0
+    vfx:
+      - type: "floating_hearts"
+        intensity: 1.2
+      - type: "sparkles"
+        intensity: 0.8
+    actors:
+      - character: "taeho"
+        animation: "overjoyed_eating"
+        pos: [0.30, 0.67]
+        scale: 1.35
+        flip_x: false
+        motion: "squash_bounce"
+        motion_speed: 1.4
+        ground_shadow: true
+        z_index: 0
+      - character: "dimsum_cat"
+        animation: "proud"
+        pos: [0.72, 0.68]
+        scale: 1.18
+        flip_x: true
+        motion: "anticipate_hop"
+        motion_speed: 1.2
+        ground_shadow: true
+        z_index: 1
+
+  # Beat 4: Sweet Resolution — Smoothly settles back to wide two-shot with subtle Dutch Tilt
+  - time: 9.00
+    text: "Crafted with pure royal love~"
+    rich_text:
+      - text: "Crafted with pure "
+        color: "#ec4899"
+      - text: "royal love~"
+        color: "#f43f5e"
+    tts_text: "사랑을 담아 만들었어요~"
+    text_size: "big"
+    camera:
+      type: "dutch_tilt"
+      roll: -2.0
+      zoom: 1.05
+      speed: 0.85
+      ease: "smooth"
+    vfx:
+      - type: "floating_hearts"
+        intensity: 1.5
+    actors:
+      - character: "taeho"
+        animation: "more_please"
+        pos: [0.30, 0.68]
+        scale: 1.30
+        flip_x: false
+        motion: "squash_bounce"
+        ground_shadow: true
+        z_index: 0
+      - character: "dimsum_cat"
+        animation: "finger_heart"
+        pos: [0.72, 0.68]
+        scale: 1.18
+        flip_x: true
+        motion: "float_sine"
+        ground_shadow: true
+        z_index: 1

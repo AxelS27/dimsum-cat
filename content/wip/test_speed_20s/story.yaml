@@ -1,0 +1,135 @@
+# ==============================================================================
+# DIMsum Cat Story Engine — 20-Second Speed Benchmark Test
+# ==============================================================================
+title: "DIMsum Cat Morning Snack (20s Benchmark)"
+description: >
+  Random 20s test story to benchmark rendering pipeline speed and visual effects.
+
+character: "dimsum_cat"
+default_animation: "excited_talk"
+bg: "#fff8f0"
+bg_image: "assets/backgrounds/kitchen.png"
+fps: 24
+width: 1080
+height: 1920
+duration: 20.0
+
+tts: false
+bg_music: "assets/music/yummy_flavor.mp3"
+bg_music_start: "00:00"
+bg_volume: 0.65
+
+intro_gap: 0.0
+between_gap: 0.0
+silent_beat_dur: 1.0
+
+beats:
+  - time: 0.00
+    text: "Hoooaamm... Masih ngantuk!"
+    sub: "Still so sleepy..."
+    rich_text:
+      - text: "Hoooaamm... "
+        color: "#6b7280"
+      - text: "Masih ngantuk!"
+        color: "#3b82f6"
+    animation: "sleepy_yawn"
+    character: "dimsum_cat"
+    pos: [0.50, 0.62]
+    scale: 1.10
+    text_size: "big"
+    bg_image: "assets/backgrounds/kitchen.png"
+    camera: "slow_zoom_in"
+    camera_intensity: 0.5
+    motion: "breathe"
+
+  - time: 4.00
+    text: "Tapi ada bau makanan enak! ✨"
+    sub: "Wait, smelling delicious food!"
+    rich_text:
+      - text: "Tapi ada bau "
+        color: "#374151"
+      - text: "makanan enak! ✨"
+        color: "#f59e0b"
+    animation: "excited_talk"
+    character: "dimsum_cat"
+    pos: [0.50, 0.62]
+    scale: 1.20
+    text_size: "big"
+    bg_image: "assets/backgrounds/kitchen.png"
+    camera: "zoom_punch"
+    camera_intensity: 0.8
+    transition: "crossfade"
+    transition_dur: 0.3
+    motion: "squash_bounce"
+    vfx:
+      - type: "sparkles"
+        count: 10
+
+  - time: 8.00
+    text: "Waktunya makan ramyeon! 🍜"
+    sub: "Time to feast on ramyeon!"
+    rich_text:
+      - text: "Waktunya makan "
+        color: "#991b1b"
+      - text: "ramyeon! 🍜"
+        color: "#dc2626"
+    animation: "happy_wiggle"
+    character: "dimsum_cat"
+    pos: [0.50, 0.64]
+    scale: 1.25
+    text_size: "huge"
+    bg_image: "assets/backgrounds/ramyeon_closeup.png"
+    camera: "sway"
+    camera_intensity: 0.7
+    transition: "crossfade"
+    transition_dur: 0.25
+    motion: "squash_bounce"
+    vfx:
+      - type: "floating_hearts"
+        count: 8
+
+  - time: 12.00
+    text: "Kenyang dan bahagia banget~ ❤️"
+    sub: "Full tummy and so happy~"
+    rich_text:
+      - text: "Kenyang & bahagia "
+        color: "#831843"
+      - text: "banget~ ❤️"
+        color: "#db2777"
+    animation: "finger_heart"
+    character: "dimsum_cat"
+    pos: [0.50, 0.62]
+    scale: 1.15
+    text_size: "big"
+    bg_image: "assets/backgrounds/dining_hall.png"
+    camera: "slow_zoom_in"
+    camera_intensity: 0.6
+    transition: "crossfade"
+    transition_dur: 0.25
+    motion: "float_sine"
+    vfx:
+      - type: "floating_hearts"
+        count: 12
+
+  - time: 16.00
+    text: "Jangan lupa makan juga ya! 😉"
+    sub: "Don't forget to eat too!"
+    rich_text:
+      - text: "Jangan lupa makan "
+        color: "#065f46"
+      - text: "juga ya! 😉"
+        color: "#059669"
+    animation: "wink"
+    character: "dimsum_cat"
+    pos: [0.50, 0.62]
+    scale: 1.20
+    text_size: "big"
+    bg_image: "assets/backgrounds/dining_hall.png"
+    camera: "zoom_punch"
+    camera_intensity: 0.9
+    transition: "crossfade"
+    transition_dur: 0.2
+    motion: "squash_bounce"
+    vfx:
+      - type: "sparkles"
+        count: 12

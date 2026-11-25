@@ -32,7 +32,7 @@ gpt_sovits_speed: 0.88       # Voice speed (0.8 - 1.2)
 tts_volume: 1.4
 
 # Background Music
-bg_music: "../../assets/music/love_maybe.mp3"
+bg_music: "assets/music/love_maybe.mp3"
 bg_music_start: "00:00"      # Start offset in music file (mm:ss or seconds)
 bg_volume: 0.09              # Background music volume (0.0 to 1.0)
 bg_music_fade_in: 0.0

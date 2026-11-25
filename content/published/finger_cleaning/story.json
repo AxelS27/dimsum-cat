@@ -1,0 +1,216 @@
+{
+  "title": "Finger Cleaning Service",
+  "description": "여기에 손가락을 올려봐~ 딤섬캣이 깨끗하게 닦아줄게! 🐾✨\n\n#dimsumcat #kawaii #fyp #foryou #viral #kdrama #cute #interactive #putyourfingerhere #blowthisup #xyzbca #trending",
+  "pinned_comment": "손가락 올려봤어요? 딤섬캣 서비스 어때요? 😂🐾",
+  "default_animation": "normal_talk",
+  "character": "dimsum_cat",
+  "bg": "#fff3e8",
+  "fps": 24,
+  "width": 1080,
+  "height": 1920,
+  "tts": true,
+  "gpt_sovits_ref": "assets/audio_reference/dimsum_cat_korean.mp3",
+  "gpt_sovits_speed": 0.95,
+  "gpt_sovits_server": "http://127.0.0.1:9880",
+  "duration": 21.0,
+  "bg_music": "assets/music/jazz_chill1.mp3",
+  "bg_music_start": "00:00",
+  "bg_volume": 0.09,
+  "intro_gap": 0.0,
+  "between_gap": 0.65,
+  "silent_beat_dur": 1.5,
+  "watermark": "",
+  "beats": [
+    {
+      "time": 0.0,
+      "text": "여기에 손가락을 올려봐!",
+      "sub": "put your finger here!",
+      "rich_text": [
+        {
+          "text": "여기에 ",
+          "color": "#2a2a2a"
+        },
+        {
+          "text": "손가락을 ",
+          "color": "#e91e8c"
+        },
+        {
+          "text": "올려봐!",
+          "color": "#2a2a2a"
+        }
+      ],
+      "animation": "normal_talk",
+      "pos": "left-low",
+      "scale": 0.75,
+      "text_size": "big",
+      "tts_delay": 0.9,
+      "after_gap": 1.05,
+      "accessories": [
+        {
+          "image": "../../../experiments/animations/love_marker",
+          "pos": "0.59,0.50",
+          "scale": 0.23
+        },
+        {
+          "image": "../../../experiments/animations/arrow/frame_a.png",
+          "pos": "0.59,0.38",
+          "scale": 0.22,
+          "rotate": 90
+        }
+      ]
+    },
+    {
+      "time": 2.5,
+      "text": "",
+      "sub": "",
+      "animation": "noticing",
+      "pos": "0.27,0.42",
+      "scale": 0.85,
+      "text_size": "big",
+      "accessories": [
+        {
+          "image": "../../../experiments/animations/love_marker",
+          "pos": "0.59,0.50",
+          "scale": 0.23
+        },
+        {
+          "image": "../../../experiments/animations/arrow/frame_a.png",
+          "pos": "0.59,0.38",
+          "scale": 0.22,
+          "rotate": 90
+        }
+      ]
+    },
+    {
+      "time": 4.5,
+      "text": "이거 진짜 더럽네... 닦아줄게!",
+      "sub": "omg this is SO dirty... let me clean it",
+      "rich_text": [
+        {
+          "text": "이거 진짜 ",
+          "color": "#2a2a2a"
+        },
+        {
+          "text": "더럽네...",
+          "color": "#e91e8c"
+        },
+        {
+          "text": " 닦아줄게!",
+          "color": "#2a2a2a"
+        }
+      ],
+      "animation": "wiping",
+      "pos": "0.36,0.42",
+      "scale": 1.0,
+      "text_size": "big",
+      "sfx": [
+        {
+          "file": "assets/sfx/wipe.mp3",
+          "volume": 0.75
+        }
+      ],
+      "accessories": [
+        {
+          "image": "../../../experiments/animations/love_marker",
+          "pos": "0.59,0.50",
+          "scale": 0.23
+        },
+        {
+          "image": "../../../experiments/animations/arrow/frame_a.png",
+          "pos": "0.59,0.38",
+          "scale": 0.22,
+          "rotate": 90
+        }
+      ]
+    },
+    {
+      "time": 8.5,
+      "text": "소독도 해줘야지~",
+      "sub": "gotta disinfect too~",
+      "rich_text": [
+        {
+          "text": "소독도 ",
+          "color": "#2a2a2a"
+        },
+        {
+          "text": "해줘야지~",
+          "color": "#e91e8c"
+        }
+      ],
+      "animation": "spraying",
+      "pos": "0.36,0.42",
+      "scale": 1.0,
+      "text_size": "big",
+      "sfx": [
+        {
+          "file": "assets/sfx/spray.mp3",
+          "volume": 0.75
+        }
+      ],
+      "accessories": [
+        {
+          "image": "../../../experiments/animations/love_marker",
+          "pos": "0.59,0.50",
+          "scale": 0.23
+        },
+        {
+          "image": "../../../experiments/animations/arrow/frame_a.png",
+          "pos": "0.59,0.38",
+          "scale": 0.22,
+          "rotate": 90
+        }
+      ]
+    },
+    {
+      "time": 12.5,
+      "text": "음... 이제 다 됐나?",
+      "sub": "hmm... is it clean now?",
+      "rich_text": [
+        {
+          "text": "음... ",
+          "color": "#2a2a2a"
+        },
+        {
+          "text": "이제 다 됐나?",
+          "color": "#e91e8c"
+        }
+      ],
+      "animation": "inspect",
+      "pos": "0.36,0.42",
+      "scale": 1.0,
+      "text_size": "big",
+      "accessories": [
+        {
+          "image": "../../../experiments/animations/love_marker",
+          "pos": "0.59,0.50",
+          "scale": 0.23
+        },
+        {
+          "image": "../../../experiments/animations/arrow/frame_a.png",
+          "pos": "0.59,0.38",
+          "scale": 0.22,
+          "rotate": 90
+        }
+      ]
+    },
+    {
+      "time": 16.0,
+      "text": "완벽해! 서비스 어때?",
+      "sub": "perfect! how's the service?",
+      "rich_text": [
+        {
+          "text": "완벽해! ",
+          "color": "#e91e8c"
+        },
+        {
+          "text": "서비스 어때?",
+          "color": "#2a2a2a"
+        }
+      ],
+      "animation": "ending",
+      "pos": "center",
+      "scale": 1.2,
+      "text_size": "huge"
+    }
+  ]
+}
