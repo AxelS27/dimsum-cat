@@ -104,6 +104,22 @@ def _resolve_tts_lang(text: str, lang: str = "auto") -> str:
     return "ko" if any("가" <= c <= "힣" for c in text) else "en"
 
 
+def _edge_tts_clip(text: str, path: Path, voice: str = "en-US-JennyNeural") -> None:
+    """Generate one MP3 clip via edge-tts CLI (for fast English draft voiceovers)."""
+    import sys
+    mp3_path = path.with_suffix(".mp3")
+    exe = shutil.which("edge-tts")
+    cmd = [exe] if exe else [sys.executable, "-m", "edge_tts"]
+    proc = subprocess.run(
+        [*cmd, "--voice", voice, "--text", text, "--write-media", str(mp3_path)],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+    if proc.returncode != 0 or not mp3_path.exists():
+        raise RuntimeError(f"edge-tts failed ({proc.returncode}): {proc.stderr.strip()}")
+
+
 def _gpt_sovits_clip(
     text: str,
     ref_audio: str,
@@ -165,6 +181,8 @@ def build_tts_audio(
     pitch_target: float = 0.0,
     tts_lang: str = "auto",
     tts_prompt_lang: str = "ko",
+    tts_engine: str = "gpt_sovits",
+    edge_voice: str = "en-US-JennyNeural",
 ) -> bool | dict:
     """Generate a timed audio track from beat texts using ffmpeg filter_complex.
 
@@ -189,8 +207,9 @@ def build_tts_audio(
 
     # ── Generate clips (skipped if pregenerated_dir is provided) ────────────
     if not pregenerated_dir:
+        engine = (tts_engine or "gpt_sovits").strip().lower()
         ref, server, speed = gpt_sovits_ref, gpt_sovits_server, gpt_sovits_speed
-        if not ref:
+        if engine != "edge" and not ref:
             print("  TTS skipped: gpt_sovits_ref not set")
             shutil.rmtree(tmp_dir, ignore_errors=True)
             return False
@@ -198,21 +217,25 @@ def build_tts_audio(
             for i, b in speak_beats:
                 raw_tts = getattr(b, "tts_text", "") or b.text
                 tts_text = raw_tts.replace("~", "").strip()
-                print(f"    GPT-SoVITS: {tts_text}")
-                temp = b.tts_temperature if b.tts_temperature is not None else gpt_sovits_temperature
-                sp = b.tts_speed if b.tts_speed is not None else speed
-                _gpt_sovits_clip(tts_text, ref, tmp_dir / f"beat_{i:02d}.wav",
-                                 server=server,
-                                 speed=sp,
-                                 temperature=temp,
-                                 top_k=gpt_sovits_top_k,
-                                 top_p=gpt_sovits_top_p,
-                                 rep_penalty_override=gpt_sovits_rep_penalty,
-                                 prompt_text=gpt_sovits_prompt_text,
-                                 text_lang=tts_lang,
-                                 prompt_lang=tts_prompt_lang)
+                if engine == "edge":
+                    print(f"    edge-tts ({edge_voice}): {tts_text}")
+                    _edge_tts_clip(tts_text, tmp_dir / f"beat_{i:02d}.mp3", voice=edge_voice)
+                else:
+                    print(f"    GPT-SoVITS: {tts_text}")
+                    temp = b.tts_temperature if b.tts_temperature is not None else gpt_sovits_temperature
+                    sp = b.tts_speed if b.tts_speed is not None else speed
+                    _gpt_sovits_clip(tts_text, ref, tmp_dir / f"beat_{i:02d}.wav",
+                                     server=server,
+                                     speed=sp,
+                                     temperature=temp,
+                                     top_k=gpt_sovits_top_k,
+                                     top_p=gpt_sovits_top_p,
+                                     rep_penalty_override=gpt_sovits_rep_penalty,
+                                     prompt_text=gpt_sovits_prompt_text,
+                                     text_lang=tts_lang,
+                                     prompt_lang=tts_prompt_lang)
         except Exception as e:
-            print(f"  TTS (GPT-SoVITS) failed: {e}")
+            print(f"  TTS ({engine}) failed: {e}")
             shutil.rmtree(tmp_dir, ignore_errors=True)
             return False
         for i, _ in speak_beats:

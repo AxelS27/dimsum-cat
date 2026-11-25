@@ -270,6 +270,8 @@ class RenderConfig:
     tts_pitch_target:    float = 0.0     # target F0 in Hz (0 = auto: median of clips)
     tts_lang:            str   = "auto"  # "auto" (detect Hangul->ko else en), "en", or "ko"
     tts_prompt_lang:     str   = "ko"    # language of gpt_sovits_ref audio ("ko" or "en")
+    tts_engine:          str   = "gpt_sovits"  # "gpt_sovits" or "edge" (draft English voiceover)
+    edge_voice:          str   = "en-US-JennyNeural"  # edge-tts voice when tts_engine == "edge"
     bg_music:           str  = ""
     bg_music_start:     str  = ""   # "SS:cs" — seconds:centiseconds, e.g. "12:50" = 12.50s
     bg_music_fade_in:   float = 0.0

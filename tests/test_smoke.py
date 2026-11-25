@@ -7,7 +7,7 @@ from pathlib import Path
 from src.camera import compute_camera
 from src.models import ActorConfig, StoryBeat
 from src.renderer import iter_video_frames
-from src.story import build_parser, load_story_file
+from src.story import build_parser, load_story_file, validate_story
 from src.tts import _detect_emotion, _resolve_tts_lang, _should_speak
 from src.vfx import render_vfx_layer
 
@@ -71,6 +71,18 @@ class EngineSmokeTests(unittest.TestCase):
         )
         self.assertEqual(vfx_img.size, (360, 640))
         self.assertEqual(vfx_img.mode, "RGBA")
+
+    def test_validate_story_catches_missing_animation_and_hangul(self) -> None:
+        template_dir = ROOT / "content" / "_template"
+        cfg = load_story_file(template_dir, build_parser().parse_args([]))
+        # Template has Hangul placeholder "텍스트"
+        errs = validate_story(cfg)
+        self.assertTrue(any("Hangul" in e for e in errs))
+
+        cfg.beats[0].text = "Clean English"
+        cfg.beats[0].animation = "nonexistent_animation_xyz"
+        errs2 = validate_story(cfg)
+        self.assertTrue(any("missing animation" in e for e in errs2))
 
 
 if __name__ == "__main__":

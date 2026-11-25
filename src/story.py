@@ -22,6 +22,7 @@ from src.models import (
     RichTextSpan,
     StoryBeat,
     ROOT,
+    SPRITES_ROOT,
     CONTENT_ROOT,
     TEXT_SIZES,
 )
@@ -249,6 +250,8 @@ def load_story_file(path: Path, args: argparse.Namespace) -> RenderConfig:
         tts_pitch_target       = float(data.get("tts_pitch_target", 0.0)),
         tts_lang               = str(data.get("tts_lang", "auto")),
         tts_prompt_lang        = str(data.get("tts_prompt_lang", "ko")),
+        tts_engine             = str(data.get("tts_engine", "gpt_sovits")),
+        edge_voice             = str(data.get("edge_voice", "en-US-JennyNeural")),
         bg_music          = _resolve_story_path(data.get("bg_music", args.bg_music), story_dir),
         bg_music_start    = data.get("bg_music_start", ""),
         bg_volume         = float(data.get("bg_volume",  0.09)),
@@ -340,6 +343,7 @@ Demo (built-in 4-beat story):
 """,
     )
     p.add_argument("--list-animations", action="store_true", help="List available animations and exit.")
+    p.add_argument("--validate", action="store_true", help="Validate story assets, animations, and text rules without rendering.")
     p.add_argument("--demo",   action="store_true", help="Render the built-in demo story.")
     p.add_argument("--story",  type=Path,           help="Path to a story JSON file.")
 
@@ -543,6 +547,8 @@ def render(config: RenderConfig, tts_only: bool = False, audio_only: bool = Fals
             gpt_sovits_prompt_text=config.gpt_sovits_prompt_text,
             tts_lang=config.tts_lang,
             tts_prompt_lang=config.tts_prompt_lang,
+            tts_engine=config.tts_engine,
+            edge_voice=config.edge_voice,
             pitch_normalize=config.tts_pitch_normalize,
             pitch_target=config.tts_pitch_target,
         )
@@ -703,6 +709,41 @@ def render(config: RenderConfig, tts_only: bool = False, audio_only: bool = Fals
     return {"frames_dir": (frames_dir if config.save_frames else None), "mp4": mp4_path, "gif": gif_path if gif_created else None}
 
 
+def validate_story(config: RenderConfig) -> list[str]:
+    """Run fast pre-flight checks on a RenderConfig and return a list of error strings."""
+    errors: list[str] = []
+    if not config.beats:
+        errors.append("Story has no beats.")
+
+    if config.bg_music and not Path(config.bg_music).exists():
+        errors.append(f"bg_music not found: {config.bg_music}")
+    if config.bg_image and not Path(config.bg_image).exists():
+        errors.append(f"bg_image not found: {config.bg_image}")
+    if config.tts and config.tts_engine == "gpt_sovits":
+        if not config.gpt_sovits_ref or not Path(config.gpt_sovits_ref).exists():
+            errors.append(f"gpt_sovits_ref not found: {config.gpt_sovits_ref}")
+
+    for idx, b in enumerate(config.beats):
+        if b.bg_image and not Path(b.bg_image).exists():
+            errors.append(f"Beat {idx}: bg_image not found: {b.bg_image}")
+        for sfx_item in b.sfx:
+            sfx_file = sfx_item.get("file", "")
+            if sfx_file:
+                resolved = Path(_resolve_story_path(str(sfx_file), config.story_dir or ROOT))
+                if not resolved.exists():
+                    errors.append(f"Beat {idx}: sfx not found: {sfx_file}")
+        for actor in b.get_actors(config.default_character, config.default_animation):
+            if actor.character and actor.animation:
+                anim_dir = SPRITES_ROOT / actor.character / "animations" / actor.animation
+                if not anim_dir.is_dir():
+                    errors.append(
+                        f"Beat {idx}: missing animation '{actor.animation}' for character '{actor.character}'"
+                    )
+        if any("가" <= c <= "힣" for c in (b.text + b.sub)):
+            errors.append(f"Beat {idx}: Hangul found in visual text/sub (screen text should be English)")
+    return errors
+
+
 def main() -> None:
     parser = build_parser()
     args = parser.parse_args()
@@ -710,6 +751,19 @@ def main() -> None:
     if args.list_animations:
         for name in list_animations():
             print(name)
+        return
+
+    if args.validate:
+        if not args.story:
+            print("ERROR: --validate requires --story <path>")
+            sys.exit(2)
+        cfg = load_story_json(args.story, args)
+        errs = validate_story(cfg)
+        if errs:
+            for err in errs:
+                print(f"  [ERROR] {err}")
+            sys.exit(1)
+        print(f"  [OK] Story validated: {len(cfg.beats)} beat(s), no issues found.")
         return
 
     tts_only    = getattr(args, "tts_only",    False)
