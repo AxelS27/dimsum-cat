@@ -1,0 +1,502 @@
+title: "If You're Happy and You Know It — V2"
+description: "When you try the viral clap your hands trend with a duck holding a pan... 🦆🍳💥 Peace was never an option. #bluey #capybara #duckling #ifyourehappyandyouknowit #slapstick #funny #comedy #animation #reels #fyp"
+fps: 24
+width: 1080
+height: 1920
+duration: 23.0
+bg: "#eef5ea"
+bg_image: "assets/backgrounds/bluey_backyard.jpg"
+character: "capybara"
+default_animation: "dance"
+tts: false
+bg_music: "assets/music/if_youre_happy_clip.wav"
+bg_music_start: "00:00"
+bg_volume: 1.0
+bg_music_fade_in: 0.0
+
+beats:
+  # Beat 0: Innocent Dancing Intro (0.00s - 7.15s)
+  - time: 0.00
+    text: "If You're Happy and You Know It..."
+    rich_text:
+      - text: "If You're Happy "
+        color: "#2C3E50"
+      - text: "And You Know It..."
+        color: "#2980B9"
+    text_size: "big"
+    camera: "static"
+    vfx:
+      - type: "music_notes"
+        pos: [0.50, 0.48]
+        radius: 420
+        count: 10
+    actors:
+      - character: "capybara"
+        animation: "dance"
+        pos: [0.26, 0.70]
+        scale: 1.05
+        motion: "organic_groove"
+        motion_intensity: 0.9
+        ground_shadow: true
+      - character: "duckling"
+        animation: "dance"
+        pos: [0.72, 0.72]
+        scale: 0.95
+        motion: "organic_groove"
+        motion_intensity: -0.9
+        ground_shadow: true
+
+  # Beat 1: Duck quietly pulls out the frying pan! (7.16s - 9.47s)
+  - time: 7.16
+    text: "Clap Your Hands..."
+    rich_text:
+      - text: "Clap Your Hands... "
+        color: "#2C3E50"
+      - text: "Wait..."
+        color: "#E67E22"
+    text_size: "big"
+    camera: "static"
+    actors:
+      - character: "capybara"
+        animation: "dance"
+        pos: [0.26, 0.70]
+        scale: 1.05
+        motion: "organic_groove"
+        motion_intensity: 0.9
+      - character: "duckling"
+        animation: "swing_up"
+        pos: [0.72, 0.72]
+        scale: 0.95
+        flip_x: true
+        motion: "organic_groove"
+        motion_intensity: -0.9
+
+  # Beat 2: Duck creeps in close! (9.48s - 10.35s)
+  - time: 9.48
+    text: "LOOK OUT!"
+    rich_text:
+      - text: "LOOK "
+        color: "#E67E22"
+      - text: "OUT!"
+        color: "#E74C3C"
+    text_size: "huge"
+    camera: "static"
+    actors:
+      - character: "capybara"
+        animation: "dance"
+        pos: [0.26, 0.70]
+        scale: 1.05
+        motion: "organic_groove"
+        motion_intensity: 0.9
+      - character: "duckling"
+        animation: "swing_up"
+        pos: [0.72, 0.72]
+        move_to: [0.46, 0.70]
+        move_ease: "smooth"
+        scale: 0.95
+        flip_x: true
+        motion: "organic_groove"
+        motion_intensity: -0.9
+
+  # Beat 3: ROUND 1 - HIT 1 (10.36s - 10.54s) -> TYANG 1!
+  - time: 10.36
+    text: "BONK!"
+    rich_text:
+      - text: "BONK!"
+        color: "#FF3838"
+    text_size: "huge"
+    camera: "rumble"
+    camera_intensity: 0.8
+    sfx:
+      - file: "assets/sfx/frying_pan_tyang.mp3"
+        volume: 1.15
+    actors:
+      - character: "capybara"
+        animation: "hit_1"
+        pos: [0.26, 0.70]
+        scale: 1.05
+      - character: "duckling"
+        animation: "bonk_down"
+        pos: [0.46, 0.70]
+        scale: 0.95
+        flip_x: true
+
+  # Beat 4: Duck resets pan quickly between hits (10.55s - 10.74s) — Holds Bonk 1 text!
+  - time: 10.55
+    text: "BONK!"
+    rich_text:
+      - text: "BONK!"
+        color: "#FF3838"
+    text_size: "huge"
+    camera: "static"
+    actors:
+      - character: "capybara"
+        animation: "hit_1"
+        pos: [0.26, 0.70]
+        scale: 1.05
+      - character: "duckling"
+        animation: "swing_up"
+        pos: [0.46, 0.70]
+        scale: 0.95
+        flip_x: true
+
+  # Beat 5: ROUND 1 - HIT 2 (10.75s - 11.34s) -> TYANG 2!
+  - time: 10.75
+    text: "BONK!!"
+    rich_text:
+      - text: "BONK!!"
+        color: "#FF3838"
+    text_size: "huge"
+    camera: "rumble"
+    camera_intensity: 1.1
+    sfx:
+      - file: "assets/sfx/frying_pan_tyang.mp3"
+        volume: 1.2
+    actors:
+      - character: "capybara"
+        animation: "hit_1"
+        pos: [0.26, 0.70]
+        scale: 1.05
+      - character: "duckling"
+        animation: "bonk_down"
+        pos: [0.46, 0.70]
+        scale: 0.95
+        flip_x: true
+
+  # Beat 6: Capybara rubs head in confusion, duck sneaks back (11.35s - 13.31s)
+  - time: 11.35
+    text: "Ouch... what was that?!"
+    rich_text:
+      - text: "Ouch... "
+        color: "#2C3E50"
+      - text: "What Was That?!"
+        color: "#E67E22"
+    text_size: "big"
+    camera: "static"
+    vfx:
+      - type: "question_marks"
+        target: "capybara"
+        color: "#FFEAA7"
+        stroke_color: "#1E272E"
+        stroke_width: 4
+        size: 60
+        count: 2
+    actors:
+      - character: "capybara"
+        animation: "rub_head"
+        pos: [0.26, 0.70]
+        scale: 1.05
+      - character: "duckling"
+        animation: "giggle"
+        pos: [0.46, 0.70]
+        move_to: [0.72, 0.72]
+        move_ease: "smooth"
+        scale: 0.95
+        flip_x: true
+
+  # Beat 7: Suspicion rising — duck sneaks close again! (13.32s - 14.19s)
+  - time: 13.32
+    text: "Not again..."
+    rich_text:
+      - text: "NOT "
+        color: "#E67E22"
+      - text: "AGAIN..."
+        color: "#E74C3C"
+    text_size: "big"
+    camera: "static"
+    actors:
+      - character: "capybara"
+        animation: "pout_angry"
+        pos: [0.26, 0.70]
+        scale: 1.05
+      - character: "duckling"
+        animation: "swing_up"
+        pos: [0.72, 0.72]
+        move_to: [0.46, 0.70]
+        move_ease: "smooth"
+        scale: 0.95
+        flip_x: true
+
+  # Beat 8: ROUND 2 - HIT 1 (14.20s - 14.39s) -> TYANG 1!
+  - time: 14.20
+    text: "BONK!"
+    rich_text:
+      - text: "BONK!"
+        color: "#FF3838"
+    text_size: "huge"
+    camera: "rumble"
+    camera_intensity: 0.9
+    sfx:
+      - file: "assets/sfx/frying_pan_tyang.mp3"
+        volume: 1.15
+    actors:
+      - character: "capybara"
+        animation: "hit_2"
+        pos: [0.26, 0.70]
+        scale: 1.05
+      - character: "duckling"
+        animation: "bonk_down"
+        pos: [0.46, 0.70]
+        scale: 0.95
+        flip_x: true
+
+  # Beat 9: Duck resets pan quickly (14.40s - 14.59s) — Holds Bonk 1 text!
+  - time: 14.40
+    text: "BONK!"
+    rich_text:
+      - text: "BONK!"
+        color: "#FF3838"
+    text_size: "huge"
+    camera: "static"
+    actors:
+      - character: "capybara"
+        animation: "hit_2"
+        pos: [0.26, 0.70]
+        scale: 1.05
+      - character: "duckling"
+        animation: "swing_up"
+        pos: [0.46, 0.70]
+        scale: 0.95
+        flip_x: true
+
+  # Beat 10: ROUND 2 - HIT 2 (14.60s - 15.13s) -> TYANG 2!
+  - time: 14.60
+    text: "BONK!!"
+    rich_text:
+      - text: "BONK!!"
+        color: "#FF3838"
+    text_size: "huge"
+    camera: "rumble"
+    camera_intensity: 1.2
+    sfx:
+      - file: "assets/sfx/frying_pan_tyang.mp3"
+        volume: 1.2
+    actors:
+      - character: "capybara"
+        animation: "hit_2"
+        pos: [0.26, 0.70]
+        scale: 1.05
+      - character: "duckling"
+        animation: "bonk_down"
+        pos: [0.46, 0.70]
+        scale: 0.95
+        flip_x: true
+
+  # Beat 11: Removing mask (15.14s - 17.49s)
+  - time: 15.14
+    text: "THAT IS ENOUGH."
+    rich_text:
+      - text: "THAT IS "
+        color: "#2C3E50"
+      - text: "ENOUGH."
+        color: "#C0392B"
+    text_size: "big"
+    camera: "static"
+    actors:
+      - character: "capybara"
+        animation: "remove_mask"
+        pos: [0.26, 0.70]
+        scale: 1.08
+      - character: "duckling"
+        animation: "giggle"
+        pos: [0.46, 0.70]
+        move_to: [0.65, 0.72]
+        move_ease: "smooth"
+        scale: 0.95
+        flip_x: true
+
+  # Beat 12: The DEATH STARE Reveal (17.50s - 18.69s)
+  - time: 17.50
+    text: "YOU."
+    rich_text:
+      - text: "YOU."
+        color: "#C0392B"
+    text_size: "huge"
+    camera:
+      type: "slow_zoom_in"
+      target: [0.48, 0.68]
+      zoom: 1.12
+      speed: 1.0
+    vfx:
+      - type: "anger_vein"
+        target: "capybara"
+        color: "#FF3838"
+        size: 46
+    sfx:
+      - file: "assets/sfx/tom_scream.mp3"
+        volume: 1.2
+    actors:
+      - character: "capybara"
+        animation: "death_stare"
+        pos: [0.26, 0.70]
+        scale: 1.10
+      - character: "duckling"
+        animation: "shocked"
+        pos: [0.65, 0.72]
+        scale: 0.95
+        flip_x: true
+
+  # Beat 13: Suspense Creep & Duck Shivering (18.70s - 19.43s)
+  - time: 18.70
+    text: "..."
+    rich_text:
+      - text: "..."
+        color: "#7F8C8D"
+    text_size: "normal"
+    camera:
+      type: "slow_zoom_in"
+      target: [0.48, 0.68]
+      zoom: 1.18
+      speed: 0.8
+    vfx:
+      - type: "anger_vein"
+        target: "capybara"
+        color: "#FF3838"
+        size: 46
+    actors:
+      - character: "capybara"
+        animation: "death_stare"
+        pos: [0.26, 0.70]
+        scale: 1.10
+        motion: "breathe"
+      - character: "duckling"
+        animation: "shocked"
+        pos: [0.65, 0.72]
+        scale: 0.95
+        flip_x: true
+        motion: "panic_jitter"
+        motion_intensity: 0.8
+
+  # Beat 14: Capybara slowly steps closer like a final boss! (19.44s - 21.30s)
+  - time: 19.44
+    text: "If you're happy and you know it..."
+    rich_text:
+      - text: "If You're Happy "
+        color: "#2C3E50"
+      - text: "And You Know It..."
+        color: "#C0392B"
+    text_size: "big"
+    vfx:
+      - type: "anger_vein"
+        target: "capybara"
+        color: "#FF3838"
+        size: 46
+      - type: "sweat_drops"
+        target: "duckling"
+    camera:
+      type: "slow_zoom_in"
+      target: [0.48, 0.68]
+      zoom: 1.24
+      speed: 0.6
+    actors:
+      - character: "capybara"
+        animation: "death_stare"
+        pos: [0.26, 0.70]
+        move_to: [0.30, 0.70]
+        move_ease: "smooth"
+        scale: 1.12
+        motion: "breathe"
+      - character: "duckling"
+        animation: "shocked"
+        pos: [0.65, 0.72]
+        scale: 0.95
+        flip_x: true
+        motion: "panic_jitter"
+        motion_intensity: 1.0
+
+  # Beat 15: Snappy kick windup rotated 45 deg clockwise (21.31s - 21.95s)
+  - time: 21.31
+    text: "CLAP YOUR HANDS..."
+    rich_text:
+      - text: "CLAP "
+        color: "#2C3E50"
+      - text: "YOUR HANDS..."
+        color: "#E74C3C"
+    text_size: "big"
+    text_anim: "pop"
+    camera:
+      type: "slow_zoom_in"
+      target: [0.48, 0.68]
+      zoom: 1.26
+      speed: 1.0
+    actors:
+      - character: "capybara"
+        animation: "kick_windup"
+        pos: [0.30, 0.70]
+        scale: 1.15
+        rotate: -45.0
+      - character: "duckling"
+        animation: "shocked"
+        pos: [0.65, 0.72]
+        scale: 0.95
+        flip_x: true
+        motion: "panic_jitter"
+
+  # Beat 16: THE KICK IMPACT! (21.96s - 22.45s) — V2 kick
+  - time: 21.96
+    text: "CLAP THIS!!"
+    rich_text:
+      - text: "CLAP "
+        color: "#F39C12"
+      - text: "THIS!!"
+        color: "#E74C3C"
+    text_size: "huge"
+    text_anim: "shake"
+    camera: "rumble"
+    camera_intensity: 1.4
+    sfx:
+      - file: "assets/sfx/punch.mp3"
+        volume: 1.1
+    actors:
+      - character: "duckling"
+        animation: "kick_impact"
+        pos: [0.65, 0.70]
+        scale: 0.95
+        z_index: 1
+        flip_x: false
+      - character: "capybara"
+        animation: "kick_strike"
+        pos: [0.35, 0.70]
+        scale: 1.25
+        z_index: 2
+
+  # Beat 17: Duck launches into the sky (Team Rocket style!) (22.46s - 23.00s) — V2 kick
+  - time: 22.46
+    text: "BYE BYE DUCK!!"
+    rich_text:
+      - text: "BYE BYE "
+        color: "#27AE60"
+      - text: "DUCK!!"
+        color: "#2ECC71"
+    text_size: "big"
+    text_anim: "pop"
+    vfx:
+      - type: "sparkles"
+        target: "duckling"
+        radius: 110
+        count: 8
+    sfx:
+      - file: "assets/sfx/slide_boing.mp3"
+        volume: 0.9
+    camera:
+      type: "slow_zoom_out"
+      target: [0.50, 0.50]
+      zoom: 1.0
+      speed: 0.8
+    actors:
+      - character: "capybara"
+        animation: "smug_win"
+        pos: [0.28, 0.70]
+        scale: 1.08
+        z_index: 2
+      - character: "duckling"
+        animation: "flying_away"
+        pos: [0.65, 0.70]
+        move_to: [0.95, 0.30]
+        move_ease: "snappy"
+        scale: 0.92
+        scale_to: 0.25
+        rotate_to: 540.0
+        fade_out: 0.25
+        flip_x: false
+        z_index: 1
